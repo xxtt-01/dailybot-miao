@@ -1,10 +1,16 @@
 """DailyBot Web 管理面板 - FastAPI 路由"""
+import asyncio
+import traceback
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Query, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from loguru import logger
+
 from common import config
 from common.database import db
+from core.engine import run_reporting_logic
 
 
 def verify_admin_key(key: Optional[str] = Query(None, alias="key")):
@@ -24,8 +30,17 @@ async def get_status():
     platforms = []
     for wf_name in enabled_workflows:
         platform_config = config.get_platform(wf_name)
-        platforms.append({"name": wf_name, "ai_model": platform_config.get("ai_model", ""), "rpa_enabled": platform_config.get("rpa", {}).get("enabled", False)})
-    return {"version": getattr(config, "VERSION", "unknown"), "enabled_workflows": list(enabled_workflows), "platforms": platforms, "time": datetime.now().isoformat()}
+        platforms.append({
+            "name": wf_name,
+            "ai_model": platform_config.get("ai_model", ""),
+            "rpa_enabled": platform_config.get("rpa", {}).get("enabled", False),
+        })
+    return {
+        "version": getattr(config, "VERSION", "unknown"),
+        "enabled_workflows": list(enabled_workflows),
+        "platforms": platforms,
+        "time": datetime.now().isoformat(),
+    }
 
 
 @router.get("/config")
@@ -64,3 +79,30 @@ async def get_reports(date: Optional[str] = None, platform: Optional[str] = None
 async def get_logs(limit: int = Query(50, ge=1, le=200)):
     logs = db.get_run_logs(limit)
     return {"logs": logs, "count": len(logs)}
+
+
+@router.api_route("/trigger", methods=["GET", "POST"])
+async def trigger_report():
+    """手动触发一次完整的日报生成流程（异步后台执行）"""
+    from common.validator import print_validation_errors, validate_config
+
+    async def _run_main():
+        logger.info("🚀 [面板触发] 收到手动触发日报请求")
+        validation_errors = validate_config(config)
+        if validation_errors:
+            print_validation_errors(validation_errors)
+            logger.error("❌ [面板触发] 配置校验未通过，中止执行")
+            return
+
+        try:
+            await run_reporting_logic()
+            logger.info("✅ [面板触发] 日报生成流程执行完毕")
+        except Exception as e:
+            logger.error(f"❌ [面板触发] 日报生成失败: {e}")
+            logger.error(traceback.format_exc())
+
+    asyncio.create_task(_run_main())
+    return JSONResponse(
+        content={"message": "日报生成任务已提交后台执行", "status": "started"},
+        status_code=status.HTTP_202_ACCEPTED,
+    )

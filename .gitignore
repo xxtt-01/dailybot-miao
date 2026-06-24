@@ -1,17 +1,25 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
-.agent/
-.env
-.vscode
-token.json
-.ruff_cache
-logs/
-js/
-.browser_profiles
-build/
+*.py[cod]
+*.egg-info/
 dist/
-camouflage_history.json
-.scheduler.lock
+build/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project
+logs/
 *.db
-.dailybot.lock
+*.log

@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from loguru import logger
 from utils.dynamic_manager import BaseDynamicManager
 from common.config import config
@@ -34,12 +35,32 @@ class OATHPlatformManager(BaseDynamicManager):
         获取 FastAPI 应用实例（延迟初始化）
         """
         if self._app is None:
-            self._app = FastAPI()
+            self._app = FastAPI(title="DailyBot 日报喵", version="1.1.2")
             # 注册全局异常处理器
             GlobalExceptionHandler.register(self._app)
+            # 注册根路由：提供前端仪表盘
+            self._register_dashboard_route()
             # 首次访问 app 时，确保所有平台已发现并挂载路由
             self._ensure_initialized()
         return self._app
+
+    def _register_dashboard_route(self):
+        """在根路径注册前端仪表盘"""
+        @self._app.get("/", include_in_schema=False)
+        async def serve_dashboard():
+            # 定位到 web/static/dashboard.html
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            dashboard_path = os.path.join(
+                os.path.dirname(os.path.dirname(current_dir)),
+                "web", "static", "dashboard.html",
+            )
+            if os.path.exists(dashboard_path):
+                return FileResponse(dashboard_path)
+            return {"message": "DailyBot 日报喵 API 服务运行中", "status": "ok"}
+
+        @self._app.get("/health", include_in_schema=False)
+        async def health_check():
+            return {"status": "ok", "time": __import__("datetime").datetime.now().isoformat()}
 
     def _ensure_initialized(self):
         """
