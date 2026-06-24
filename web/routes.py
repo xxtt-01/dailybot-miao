@@ -1,6 +1,8 @@
 """DailyBot Web 管理面板 - FastAPI 路由"""
 import asyncio
+import os
 import traceback
+import yaml
 from datetime import datetime
 from typing import Optional
 
@@ -19,6 +21,31 @@ def verify_admin_key(key: Optional[str] = Query(None, alias="key")):
     if not key or key != expected_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的访问密钥")
     return key
+
+
+def _write_config_yaml(updates: dict):
+    target_path = None
+    app_dir = __import__("utils.path_helper", fromlist=["get_app_dir"]).get_app_dir()
+    for p in [os.path.join(app_dir, "config.yaml"), os.path.join(app_dir, "config", "config.yaml")]:
+        if os.path.exists(p):
+            target_path = p
+            break
+    # 也检查资源路径
+    if not target_path:
+        rp = __import__("utils.path_helper", fromlist=["get_resource_path"]).get_resource_path("config/config.yaml")
+        if os.path.exists(rp):
+            target_path = rp
+    if not target_path:
+        return
+    with open(target_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    for k, v in updates.items():
+        if isinstance(v, dict) and k in raw and isinstance(raw[k], dict):
+            raw[k].update(v)
+        else:
+            raw[k] = v
+    with open(target_path, "w", encoding="utf-8") as f:
+        yaml.dump(raw, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(verify_admin_key)])
@@ -106,3 +133,131 @@ async def trigger_report():
         content={"message": "日报生成任务已提交后台执行", "status": "started"},
         status_code=status.HTTP_202_ACCEPTED,
     )
+
+
+@router.get("/reports/detail")
+async def get_report_detail(id: int = Query(...)):
+    report = db.get_report_by_id(id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    return {"report": report}
+
+
+@router.get("/stats/trend")
+async def get_stats_trend(days: int = Query(7, ge=1, le=90)):
+    data = db.get_report_trend(days)
+    return {"days": [d["date"] for d in data], "counts": [d["cnt"] for d in data]}
+
+
+@router.get("/stats/platform")
+async def get_platform_stats():
+    data = db.get_platform_stats()
+    platforms = {}
+    for row in data:
+        p = row["platform"]
+        if p not in platforms:
+            platforms[p] = {"name": p, "success": 0, "failed": 0, "no_data": 0}
+        status = row["status"]
+        if status in platforms[p]:
+            platforms[p][status] = row["cnt"]
+    return {"platforms": list(platforms.values())}
+
+
+@router.get("/camouflage")
+async def get_camouflage_list():
+    from crawlers.modules.camouflage_history import camouflage_history_manager
+    items = camouflage_history_manager.list_all_items()
+    return {"items": items}
+
+
+@router.delete("/camouflage/{item_id}")
+async def delete_camouflage_item(item_id: str):
+    from crawlers.modules.camouflage_history import camouflage_history_manager
+    ok = camouflage_history_manager.delete_item(item_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="素材不存在")
+    return {"success": True, "message": "已删除"}
+
+
+@router.get("/sources")
+async def get_sources():
+    sources_cfg = config.get("crawler_sources", {})
+    result = []
+    for platform_name, cfg in sources_cfg.items():
+        if isinstance(cfg, dict):
+            repos = cfg.get("repos", [])
+            result.append({
+                "platform": platform_name,
+                "enabled": cfg.get("enabled", False),
+                "repo_count": len(repos),
+                "repos": [{"path": r.get("path", ""), "branch": r.get("branch", "main")} for r in repos],
+            })
+    return {"sources": result}
+
+
+@router.post("/sources")
+async def add_source(data: dict):
+    platform = data.get("platform", "")
+    repo_path = data.get("repo_path", "")
+    branch = data.get("branch", "main")
+    if not platform or not repo_path:
+        raise HTTPException(status_code=400, detail="platform 和 repo_path 必填")
+    sources_cfg = config.get("crawler_sources", {})
+    if platform not in sources_cfg:
+        sources_cfg[platform] = {"enabled": True, "repos": [], "token": ""}
+    sources_cfg[platform].setdefault("repos", [])
+    sources_cfg[platform]["repos"].append({"path": repo_path, "branch": branch})
+    _write_config_yaml({"crawler_sources": sources_cfg})
+    config.reload()
+    return {"success": True, "message": f"已添加仓库 {repo_path}"}
+
+
+@router.delete("/sources/{platform}/{repo_index:int}")
+async def delete_source(platform: str, repo_index: int):
+    sources_cfg = config.get("crawler_sources", {})
+    if platform not in sources_cfg:
+        raise HTTPException(status_code=404, detail="平台不存在")
+    repos = sources_cfg[platform].get("repos", [])
+    if repo_index < 0 or repo_index >= len(repos):
+        raise HTTPException(status_code=404, detail="仓库索引超出范围")
+    removed = repos.pop(repo_index)
+    _write_config_yaml({"crawler_sources": sources_cfg})
+    config.reload()
+    return {"success": True, "message": f"已删除仓库 {removed.get('path', '')}"}
+
+
+@router.get("/scheduler")
+async def get_scheduler_status():
+    from dailybot_scheduler import get_registered_task_names
+    sc = config.get("scheduler", {})
+    tasks = get_registered_task_names()
+    return {
+        "config": {
+            "enabled": sc.get("enabled", False),
+            "auto_start": sc.get("auto_start", False),
+            "default_time": sc.get("default_time", "18:20"),
+        },
+        "installed_tasks": tasks,
+    }
+
+
+@router.post("/scheduler/install")
+async def install_scheduler(data: dict = {"time": "18:20", "weekdays": [1, 2, 3, 4, 5]}):
+    from dailybot_scheduler import register_schtask, get_exe_path, TASK_NAME_PREFIX
+    task_name = f"{TASK_NAME_PREFIX}Dashboard"
+    time_str = data.get("time", "18:20")
+    weekdays = data.get("weekdays")
+    exe_path = get_exe_path()
+    import logging
+    dummy_log = logging.getLogger("scheduler_api")
+    ok = register_schtask(task_name, time_str, exe_path, dummy_log, weekdays)
+    return {"success": ok, "message": "定时任务已安装" if ok else "安装失败"}
+
+
+@router.post("/scheduler/uninstall")
+async def uninstall_scheduler():
+    from dailybot_scheduler import remove_all_tasks
+    import logging
+    dummy_log = logging.getLogger("scheduler_api")
+    remove_all_tasks(dummy_log)
+    return {"success": True, "message": "已卸载所有定时任务"}

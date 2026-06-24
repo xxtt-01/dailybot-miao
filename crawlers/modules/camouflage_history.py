@@ -159,7 +159,7 @@ class CamouflageHistoryManager:
             # 嵌套转换
             data = {}
             for date_str, items in self.history.items():
-                data[date_str] = {k: v.dict() for k, v in items.items()}
+                data[date_str] = {k: v.model_dump() for k, v in items.items()}
             write_json(self.history_file, data)
             logger.debug(
                 f"💾 [CamouflageHistory] 成功保存历史记录至 {self.history_file}"
@@ -231,6 +231,34 @@ class CamouflageHistoryManager:
                 original_date=item.date,
             )
         self.save()
+
+    def list_all_items(self) -> list:
+        items = []
+        for date_str, entries in self.history.items():
+            for item_id, history in entries.items():
+                items.append({
+                    "id": item_id,
+                    "source_name": history.source_name,
+                    "content_preview": (history.content or "")[:100],
+                    "platform": history.platform,
+                    "last_used": history.last_used,
+                    "original_date": history.original_date,
+                    "variants_count": len(history.variants),
+                })
+        items.sort(key=lambda x: x["last_used"] or "", reverse=True)
+        return items
+
+    def delete_item(self, item_id: str) -> bool:
+        found = False
+        for date_str in list(self.history.keys()):
+            if item_id in self.history[date_str]:
+                del self.history[date_str][item_id]
+                if not self.history[date_str]:
+                    del self.history[date_str]
+                found = True
+        if found:
+            self.save()
+        return found
 
 
 # 全局单例

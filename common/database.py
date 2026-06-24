@@ -84,5 +84,25 @@ class Database:
             rows = conn.execute("SELECT * FROM run_logs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
             return [dict(r) for r in rows]
 
+    def get_report_trend(self, days: int = 7):
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT date, COUNT(*) as cnt FROM daily_reports WHERE date >= date('now', ?) GROUP BY date ORDER BY date",
+                (f"-{days} days",)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_platform_stats(self):
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT platform, status, COUNT(*) as cnt FROM run_logs GROUP BY platform, status"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_report_by_id(self, report_id: int):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM daily_reports WHERE id=?", (report_id,)).fetchone()
+            return dict(row) if row else None
+
 
 db = Database()
