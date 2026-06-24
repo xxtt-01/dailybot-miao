@@ -96,7 +96,7 @@ class CrawlerManager(BaseDynamicManager):
             return "", 0, False, []
 
         # 并行抓取
-        all_results = await asyncio.gather(*crawl_tasks, *extra_tasks)
+        all_results = await asyncio.gather(*crawl_tasks, *extra_tasks, return_exceptions=True)
         real_results = all_results[: len(crawl_tasks)]
         extra_results = all_results[len(crawl_tasks) :]
 
@@ -108,6 +108,13 @@ class CrawlerManager(BaseDynamicManager):
         ):
             activities_map = real_results[i]
             extra_result = extra_results[i]
+
+            if isinstance(activities_map, Exception):
+                logger.error(f"❌ 平台 {p_name} 采集任务失败: {activities_map}")
+                continue
+            if isinstance(extra_result, Exception):
+                logger.error(f"❌ 平台 {p_name} 额外报告任务失败: {extra_result}")
+                extra_result = None
 
             # 获取本平台的显示名称
             p_display_name = crawler_instance.get_platform_name().upper()
