@@ -9,6 +9,11 @@ api_register = create_api_register()
 # 存储原始配置的字典
 Apis = {}
 
+# 导出生成的 API 对象（在 _load_modules 之前，允许子模块 from api import apis）
+apis = api_register.apis
+# 添加 declare 方法委托（用于 apis.declare() 关键字参数风格声明）
+apis["declare"] = api_register.declare
+
 
 def _load_modules():
     """
@@ -61,9 +66,6 @@ def _load_modules():
 
 # 执行加载
 _load_modules()
-
-# 导出生成的 API 对象
-apis = api_register.apis
 
 
 def setup_api_requester(instance):

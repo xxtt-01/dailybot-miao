@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "dailybot-miao"
+version = "1.1.2"
+description = "🐱 日报喵 - AI 驱动的日报自动化工具"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Youarefortunate"},
+]
+
+dependencies = [
+    "httpx[socks]>=0.24.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "python-multipart>=0.0.6",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "lark-oapi>=1.5.3",
+    "pyyaml>=6.0.0",
+    "redis>=4.0.0",
+    "playwright>=1.40.0",
+    "playwright-stealth>=2.0.0",
+    "filelock>=3.12.0",
+    "pydantic>=2.0.0",
+    "fastmcp>=0.4.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "pyinstaller>=6.0.0",
+    "ruff>=0.3.0",
+]
+rpa = ["playwright>=1.40.0"]
+web = ["fastapi>=0.100.0", "uvicorn>=0.22.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+asyncio_mode = "auto"
+
+[tool.setuptools.packages.find]
+include = ["api*", "common*", "crawlers*", "enums*", "exceptions*", "mcp_server*", "oauth*", "prompts*", "providers*", "request*", "rpa*", "token_storage*", "utils*", "web*", "workflows*"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "N", "UP"]
+ignore = ["E501", "N999"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F821"]

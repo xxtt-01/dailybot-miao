@@ -388,6 +388,7 @@ def sync_tasks(scheduler_config, log):
     default_time = scheduler_config.get("default_time", "18:00")
     tasks = scheduler_config.get("tasks") or []
 
+    log.info("📋 [调度] 配置文件中定义了 {} 个定时任务", len(tasks))
     exe_path = get_exe_path()
 
     if not enabled:
@@ -432,7 +433,7 @@ def sync_tasks(scheduler_config, log):
 # ---------------------------------------------------------------------------
 
 
-def execute_trigger(log):
+def execute_trigger(log, strict: bool = False):
     """
     执行 DailyBot 核心业务逻辑。
 
@@ -446,11 +447,11 @@ def execute_trigger(log):
 
     try:
         with lock:
-            log.info("🚀 定时任务触发，开始执行核心业务逻辑...")
+            log.info("🚀 [触发] 定时任务触发 (strict={})，开始执行核心业务逻辑...", strict)
             from main import main
 
-            asyncio.run(main())
-            log.info("✅ 核心业务逻辑执行完毕")
+            asyncio.run(main(strict=strict))
+            log.info("✅ [触发] 核心业务逻辑执行完毕")
     except (KeyboardInterrupt, asyncio.CancelledError):
         log.info("👋 用户通过键盘中断了程序执行，正在安全退出...")
     except Timeout:
@@ -476,7 +477,7 @@ def show_status(scheduler_config):
     print("=" * 60)
 
     # --- 配置 ---
-    print(f"\n📋 配置:")
+    print("\n📋 配置:")
     print(f"  scheduler.enabled:      {enabled}")
     print(f"  scheduler.auto_start:   {auto_start}")
     print(f"  scheduler.default_time: {default_time}")
@@ -497,23 +498,23 @@ def show_status(scheduler_config):
 
     # --- 开机自启动 ---
     startup_value = check_startup()
-    print(f"\n🔑 开机自启动:")
+    print("\n🔑 开机自启动:")
     if startup_value:
         print(f"  ✅ 已注册: {startup_value}")
     else:
-        print(f"  ❌ 未注册")
+        print("  ❌ 未注册")
 
     # --- 定时任务 ---
     task_names = get_registered_task_names()
-    print(f"\n⏰ 已注册的定时任务:")
+    print("\n⏰ 已注册的定时任务:")
     if task_names:
         for name in task_names:
             print(f"  ✅ {name}")
     else:
-        print(f"  ❌ 无已注册的定时任务")
+        print("  ❌ 无已注册的定时任务")
 
     # --- 运行环境 ---
-    print(f"\n🖥️ 运行环境:")
+    print("\n🖥️ 运行环境:")
     print(f"  打包模式: {'是' if is_frozen() else '否 (源码模式)'}")
     print(f"  可执行路径: {get_exe_path()}")
     print(f"  工作目录:   {get_app_dir()}")
@@ -574,6 +575,11 @@ def main():
         action="store_true",
         help="清理所有已注册的任务和自启动",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="严格模式：配置校验失败时退出程序",
+    )
     args = parser.parse_args()
 
     if args.trigger or args.once or args.status or args.uninstall:
@@ -583,14 +589,18 @@ def main():
     scheduler_config = load_scheduler_config()
 
     if args.trigger or args.once:
-        execute_trigger(log)
+        log.info("🚀 [调度] 开始执行核心业务逻辑...")
+        execute_trigger(log, strict=args.strict)
     elif args.status:
+        log.info("🚀 [状态] 正在查询调度器状态...")
         show_status(scheduler_config)
+        log.info("✅ [状态] 状态查询完成")
     elif args.uninstall:
+        log.info("🚀 [卸载] 开始卸载...")
         do_uninstall(log)
     else:
         # 默认模式：静默同步配置后退出
-        log.info("🔄 开始同步调度器配置...")
+        log.info("🔄 [调度] 开始同步调度器配置...")
         sync_tasks(scheduler_config, log)
 
 

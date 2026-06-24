@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日报喵 DailyBot 使用说明</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; color: #333; line-height: 1.8; }
+  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 40px 20px; text-align: center; }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header p { font-size: 15px; opacity: 0.9; }
+  .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+  .section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .section h2 { font-size: 18px; color: #667eea; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #f0f2f5; }
+  .section h3 { font-size: 15px; color: #444; margin: 16px 0 8px; }
+  .step { display: flex; margin-bottom: 16px; }
+  .step-num { width: 28px; height: 28px; background: #667eea; color: #fff; border-radius: 50%; text-align: center; line-height: 28px; font-size: 14px; font-weight: bold; flex-shrink: 0; }
+  .step-body { margin-left: 12px; flex: 1; }
+  .step-body p { margin-bottom: 6px; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; margin: 0 4px; }
+  .tag-free { background: #e8f5e9; color: #2e7d32; }
+  .tag-paid { background: #fff3e0; color: #e65100; }
+  .tag-key { background: #e3f2fd; color: #1565c0; }
+  .box { background: #f8f9ff; border: 1px solid #e8ecf4; border-radius: 8px; padding: 16px; margin: 12px 0; font-size: 14px; }
+  .box-title { font-weight: bold; color: #667eea; margin-bottom: 6px; }
+  code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Consolas, monospace; }
+  pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 8px 0; }
+  pre .comment { color: #6c7086; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #f8f9ff; font-weight: 600; color: #555; }
+  .tip { background: #fffde7; border: 1px solid #fff9c4; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 14px; }
+  .tip b { color: #f57f17; }
+  .warn { background: #fbe9e7; border: 1px solid #ffccbc; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 14px; }
+  .warn b { color: #d84315; }
+  .footer { text-align: center; padding: 30px; color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🐱 日报喵 (DailyBot) 使用说明</h1>
+  <p>自动从 Git 拉取你的代码提交 → AI 总结 → 推送到飞书/企业微信</p>
+</div>
+
+<div class="container">
+
+  <!-- 这是什么 -->
+  <div class="section">
+    <h2>🤔 这是什么？</h2>
+    <p>日报喵是一个帮你<strong>自动写日报</strong>的工具。每天下班时，它会：</p>
+    <div class="box">
+      <p>1️⃣ 从 GitLab/GitHub/Gitee 拉取你今天的所有代码提交</p>
+      <p>2️⃣ 交给 AI 自动总结成 readable 的日报内容</p>
+      <p>3️⃣ 推送到飞书或企业微信——你打开手机就能看到</p>
+    </div>
+    <p>你再也不用下班前翻 commit 记录、复制粘贴写日报了。</p>
+  </div>
+
+  <!-- 准备工作 -->
+  <div class="section">
+    <h2>📋 准备工作</h2>
+    <p>你需要：</p>
+    <div class="box">
+      <p>✅ <strong>一台 Windows 电脑</strong>（本项目专为 Windows 设计）</p>
+      <p>✅ 一个 <strong>AI 的 API Key</strong>（或者安装免费的 Ollama）</p>
+      <p>✅ 一个 <strong>Git 仓库</strong>（你的代码在 GitLab/GitHub/Gitee 上）</p>
+      <p>✅ 一个 <strong>飞书或企业微信</strong>（用于接收日报）</p>
+    </div>
+  </div>
+
+  <!-- 第一步：配置 -->
+  <div class="section">
+    <h2>🚀 第一步：配置</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <p><strong>进入项目文件夹</strong></p>
+        <p>打开"此电脑"，进入 <code>D:\daily-bot</code></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <p><strong>配置环境变量</strong></p>
+        <p>找到 <code>.env</code> 文件，右键 → 用记事本打开</p>
+        <p>把你用的 AI 的 API Key 填进去，比如：</p>
+        <pre><span class="comment"># 去掉前面的 # 号，把 xxx 替换成你的 Key</span>
+DEEPSEEK_API_KEY=sk-你的DeepSeekKey</pre>
+        <p>如果想用免费的本地 AI，看后面的"免费方案"。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <p><strong>配置代码仓库</strong></p>
+        <p>找到 <code>config/config.yaml</code> 文件，用记事本打开</p>
+        <p>找到 <code>crawler_sources</code> 这一段，配置你的 Git 仓库：</p>
+        <pre><span class="comment"># GitHub 示例（把你自己的仓库地址填进去）</span>
+github:
+  enabled: true
+  token: "ghp_你的GitHubToken"
+  repos:
+    - path: "你的用户名/你的仓库名"
+      branch: "main"</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <p><strong>配置推送平台（选一个就行）</strong></p>
+        <p>在 <code>config.yaml</code> 中找到 <code>enabled_workflows</code>：</p>
+        <pre><span class="comment"># 二选一：用飞书还是企业微信</span>
+enabled_workflows: ["feishu"]      <span class="comment"># 用飞书</span>
+<span class="comment"># enabled_workflows: ["wecom"]    # 用企业微信</span></pre>
+        <p>然后在 <code>platforms</code> 段填上对应的 App ID 和 Secret。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 免费方案 -->
+  <div class="section">
+    <h2>💰 免费方案（推荐新手）</h2>
+    <p>不想花钱买 API Key？用 <strong>Ollama</strong> 在你自己电脑上跑 AI，完全免费：</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <p>去 <a href="https://ollama.ai" target="_blank">ollama.ai</a> 下载并安装 Ollama</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <p>打开命令提示符（Win+R → 输入 cmd → 回车），运行：</p>
+        <pre>ollama pull qwen2.5:7b</pre>
+        <p>等待下载完成（约 4GB，需要一些时间）</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <p>在 <code>config.yaml</code> 中把 AI 模型设为 ollama：</p>
+        <pre><span class="comment"># 找到你启用的平台，把 ai_model 改成 ollama</span>
+platforms:
+  feishu:
+    ai_model: "ollama"</pre>
+      </div>
+    </div>
+
+    <div class="tip">
+      <b>💡 提示：</b>Ollama 在你自己的电脑上运行，数据不会传到第三方，隐私安全。缺点是生成速度比云端 AI 慢一些。
+    </div>
+  </div>
+
+  <!-- 第二步：运行 -->
+  <div class="section">
+    <h2>▶️ 第二步：运行</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <p><strong>双击运行</strong></p>
+        <p>找到 <code>run.py</code> 文件…… 不过 <code>.py</code> 文件不能直接双击运行。</p>
+        <p>你需要先打开命令提示符：</p>
+        <div class="box">
+          <p>按键盘上的 <kbd>Win</kbd> + <kbd>R</kbd> → 输入 <code>cmd</code> → 回车</p>
+          <p>在弹出的黑窗口里输入：</p>
+          <pre>cd D:\daily-bot
+python run.py</pre>
+          <p>按回车，它就开始运行了！</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <p><strong>查看结果</strong></p>
+        <p>运行结束后，打开你的飞书或企业微信，应该就能看到今天的日报了。</p>
+        <p>黑窗口里也会打印出 AI 生成的日报内容。</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <b>💡 提示：</b>第一次运行可能会安装浏览器驱动，稍等一会儿就好。
+    </div>
+
+    <div class="warn">
+      <b>⚠️ 如果报错：</b>"python 不是内部或外部命令"——说明你没装 Python。去 <a href="https://www.python.org/downloads/" target="_blank">python.org</a> 下载安装，安装时记得勾选 "Add Python to PATH"。
+    </div>
+  </div>
+
+  <!-- 第三步：设置每天自动运行 -->
+  <div class="section">
+    <h2>⏰ 第三步：每天自动运行</h2>
+    <p>不想每天手动跑？让它每天下班时间自动运行：</p>
+    <div class="box">
+      <p>在黑窗口里输入：</p>
+      <pre>cd D:\daily-bot
+python run.py --scheduler</pre>
+      <p>它会注册一个 Windows 定时任务，默认每天 18:20 自动运行。</p>
+      <p>以后你每天下班打开手机就能看到日报了。</p>
+    </div>
+
+    <p>想改时间？打开 <code>config/config.yaml</code>，找到：</p>
+    <pre>scheduler:
+  default_time: "18:20"    <span class="comment"># 改成你希望的时间</span></pre>
+  </div>
+
+  <!-- 配置参考 -->
+  <div class="section">
+    <h2>📖 配置参考</h2>
+
+    <h3>可用的 AI 供应商</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>名称</th><th>配置名</th><th>费用</th><th>说明</th></tr>
+        <tr><td>Ollama</td><td><code>ollama</code></td><td><span class="tag tag-free">免费</span></td><td>本地运行，无需联网，推荐新手</td></tr>
+        <tr><td>DeepSeek</td><td><code>deepseek</code></td><td><span class="tag tag-paid">便宜</span></td><td>国内可用，充值便宜</td></tr>
+        <tr><td>豆包</td><td><code>doubao</code></td><td><span class="tag tag-free">有免费额度</span></td><td>字节跳动出品</td></tr>
+        <tr><td>Gemini</td><td><code>gemini</code></td><td><span class="tag tag-free">有免费额度</span></td><td>Google 出品</td></tr>
+        <tr><td>OpenAI</td><td><code>openai</code></td><td><span class="tag tag-paid">付费</span></td><td>ChatGPT 同款</td></tr>
+        <tr><td>Anthropic</td><td><code>anthropic</code></td><td><span class="tag tag-paid">付费</span></td><td>Claude 同款</td></tr>
+      </table>
+    </div>
+
+    <h3>可用的代码源</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>平台</th><th>需要什么</th><th>Token 在哪获取</th></tr>
+        <tr><td>GitLab</td><td>Personal Access Token</td><td>GitLab → 设置 → Access Tokens</td></tr>
+        <tr><td>GitHub</td><td>Personal Access Token</td><td>GitHub → Settings → Developer settings → Personal access tokens</td></tr>
+        <tr><td>Gitee</td><td>Personal Access Token</td><td>Gitee → 设置 → 私人令牌</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 常见问题 -->
+  <div class="section">
+    <h2>❓ 常见问题</h2>
+
+    <h3>Q: 运行报错 "No module named xxx"</h3>
+    <p>缺少依赖包。在命令提示符中运行：</p>
+    <pre>cd D:\daily-bot
+pip install -r requirements.txt</pre>
+
+    <h3>Q: 如何查看当天的日报内容？</h3>
+    <p>运行后黑窗口里会打印出 AI 总结的日报。也可以看日志文件：</p>
+    <pre>cd D:\daily-bot
+notepad logs\dailybot_2026-06-24.log</pre>
+
+    <h3>Q: 不想用了怎么卸载？</h3>
+    <pre>cd D:\daily-bot
+python run.py --uninstall</pre>
+    <p>这会删除定时任务和开机自启动。</p>
+
+    <h3>Q: 如何查看当前配置了哪些定时任务？</h3>
+    <pre>cd D:\daily-bot
+python run.py --status</pre>
+  </div>
+
+  <!-- 项目信息 -->
+  <div class="section">
+    <h2>🔗 项目信息</h2>
+    <p>GitHub: <a href="https://github.com/Youarefortunate/dailybot-miao" target="_blank">https://github.com/Youarefortunate/dailybot-miao</a></p>
+    <p>Gitee: <a href="https://gitee.com/youarefortunate/daily-bot" target="_blank">https://gitee.com/youarefortunate/daily-bot</a></p>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>日报喵 DailyBot v1.1.2</p>
+</div>
+
+</body>
+</html>

@@ -1,24 +1,20 @@
 import asyncio
 import json
-import textwrap
-import os
-import subprocess
 import sys
+import textwrap
 import traceback
 from datetime import datetime
+
 import uvicorn
 from loguru import logger as log
-from playwright._impl._driver import compute_driver_executable
+
 import common.logger  # noqa: F401 (触发全局日志配置)
-from api import apis
 from common import config
 from crawlers.modules.camouflage_history import camouflage_history_manager
 from crawlers.modules.crawler_manager import crawler_manager
 from exceptions import handle_logic_exception
 from oauth import oauth_platform_manager
-from prompts import prompts
 from request.core.http_request import HttpRequest
-from request.hooks import use_request
 from rpa.modules.rpa_factory import RPAFactory
 from token_storage import load_all_tokens
 from workflows import WorkflowFactory
@@ -41,16 +37,9 @@ async def ensure_playwright_browsers():
 
     log.info("🧪 [系统] 正在准备自动化运行环境...")
 
-    # 2. 调用 playwright 内置驱动进行安装
-    # 在打包环境下，不能使用 sys.executable -m playwright
-    # 必须直接找到 playwright 的驱动二进制文件
+    # 2. 调用 playwright CLI 安装 Chromium 浏览器驱动
     try:
-        driver_exe = compute_driver_executable()
-        if not os.path.exists(driver_exe):
-            log.warning(f"⚠️ [系统] 未找到内置驱动路径: {driver_exe}")
-            return
-
-        cmd = [str(driver_exe), "install", "chromium"]
+        cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
         process = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
@@ -122,9 +111,15 @@ async def run_reporting_logic():
         return
 
     # 1. 异步数据采集与可能触发的伪装补充
-    raw_report, total_count, is_camouflage, fake_items_used = (
-        await crawler_manager.collect_and_camouflage()
-    )
+    log.info("🚀 [采集] 开始数据采集...")
+    try:
+        raw_report, total_count, is_camouflage, fake_items_used = (
+            await crawler_manager.collect_and_camouflage()
+        )
+    except Exception as e:
+        log.error("❌ [采集] 数据采集失败（关键错误）: {}", e)
+        return
+    log.info("✅ [采集] 数据采集完成，共 {} 条", total_count)
 
     if not raw_report:
         log.warning("📭 今日没有任何可汇报的数据。")
@@ -133,19 +128,36 @@ async def run_reporting_logic():
                 await wf.on_report_success("[]", {"raw_report": ""})
             except Exception as e:
                 log.error(f"发送暂无记录通知失败: {e}")
+            try:
+                from datetime import datetime
+
+                from common.database import db
+                db.log_run(
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    status="no_data",
+                    platform=wf.WORKFLOW_NAME,
+                )
+            except Exception:
+                pass
         return
 
     log.info(f"🐠 采集到以下原始报文内容 (共 {total_count} 条)：")
     log.info("\n" + "-" * 50 + "\n" + raw_report + "\n" + "-" * 50)
 
-    # 2. 并行起始反馈
+    # 2. 并行起始反馈（个别失败不阻塞其他工作流）
     wf_contexts = []
     start_tasks = [wf.on_report_start(raw_report) for wf in active_workflows]
-    contexts = await asyncio.gather(*start_tasks)
-    for i, ctx in enumerate(contexts):
+    start_results = await asyncio.gather(*start_tasks, return_exceptions=True)
+    for i, ctx in enumerate(start_results):
+        if isinstance(ctx, Exception):
+            log.error(
+                f"工作流 {active_workflows[i].WORKFLOW_NAME} on_report_start 异常: {ctx}"
+            )
+            continue
         wf_contexts.append((active_workflows[i], ctx))
 
     # 3. 准备模型请求任务 (去重：同模型只请求一次)
+    log.info("🚀 [AI] 准备发起 AI 总结请求...")
     model_tasks = {}
 
     async def get_model_summary(m_name: str):
@@ -249,8 +261,30 @@ async def run_reporting_logic():
             )
 
             # 成功回调 (如发送通知)
-            log.info(f"🚀 正在推送到平台: {wf.WORKFLOW_NAME}")
+            log.info(f"🚀 [推送] 正在推送到平台: {wf.WORKFLOW_NAME}")
             await wf.on_report_success(summary, ctx)
+            log.info(f"✅ [推送] 平台 {wf.WORKFLOW_NAME} 通知已发送")
+
+            # 记录到数据库
+            try:
+                from datetime import datetime
+
+                from common.database import db
+                db.save_report(
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    platform=wf.WORKFLOW_NAME,
+                    summary=summary,
+                    raw_report=ctx.get("raw_report", "") if isinstance(ctx, dict) else "",
+                    is_camouflage=bool(is_camouflage),
+                )
+                db.log_run(
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    status="success",
+                    platform=wf.WORKFLOW_NAME,
+                )
+                log.info(f"✅ [数据库] 平台 {wf.WORKFLOW_NAME} 运行记录已保存")
+            except Exception as db_err:
+                log.warning("⚠️ [数据库] 平台 {} 记录写入失败（非关键）: {}", wf.WORKFLOW_NAME, db_err)
 
             # 尝试触发 RPA 自动化
             await trigger_rpa(wf.WORKFLOW_NAME, summary)
@@ -258,6 +292,18 @@ async def run_reporting_logic():
         except Exception as e:
             log.error(f"工作流 {wf.WORKFLOW_NAME} 最终处置失败: {e}")
             await wf.on_report_failure(str(e), ctx)
+            try:
+                from datetime import datetime
+
+                from common.database import db
+                db.log_run(
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    status="failed",
+                    platform=wf.WORKFLOW_NAME,
+                    message=str(e),
+                )
+            except Exception:
+                pass
 
     # 💡 打印开启了 RPA 的平台状态提示
     for wf in active_workflows:
@@ -267,17 +313,34 @@ async def run_reporting_logic():
                 f"⚡ [RPA检测] {wf.WORKFLOW_NAME} 已开启自动化填报，响应后将即刻启动..."
             )
 
-    # 启动所有工作流的终结任务 (并发运行，互不干扰)
-    await asyncio.gather(*(finalize_workflow_async(wf, ctx) for wf, ctx in wf_contexts))
+    # 启动所有工作流的终结任务 (并发运行，互不干扰；个别失败不阻塞其他工作流)
+    await asyncio.gather(
+        *(finalize_workflow_async(wf, ctx) for wf, ctx in wf_contexts),
+        return_exceptions=True,
+    )
+    log.info("✅ [核心] 报告生成流程执行完毕")
 
 
 @handle_logic_exception
-async def main():
+async def main(strict: bool = False):
+    log.info("🚀 [启动] DailyBot 启动，strict={}", strict)
+
     # 0. 环境自检：如果启用了 RPA，确保浏览器驱动已安装 (傻瓜式运行)
     await ensure_playwright_browsers()
 
+    # 0.5 配置校验
+    log.info("🚀 [配置] 开始校验配置...")
+    from common.validator import print_validation_errors, validate_config
+    validation_errors = validate_config(config)
+    print_validation_errors(validation_errors)
+    log.info("✅ [配置] 校验完成，发现 {} 个配置问题", len(validation_errors))
+    if strict and validation_errors:
+        log.error("❌ [配置] 严格模式下配置校验未通过，退出程序")
+        return
+
     # 1. 判断是否需要启动 WebServer (OAuth 授权或未来可能的 WebSocket/Webhook 需要)
     enabled_workflow_names = getattr(config, "ENABLED_WORKFLOWS")
+    log.info("🚀 [授权] 检测 OAuth 授权需求...")
     oath_required_platforms = oauth_platform_manager.get_registered_oath_platforms()
     active_oath_platforms = [
         p for p in enabled_workflow_names if p in oath_required_platforms
@@ -289,6 +352,10 @@ async def main():
     server_task = None
 
     if is_server_required:
+        # 注册管理面板路由
+        from web import admin_router
+        oauth_platform_manager.app.include_router(admin_router, prefix="")
+
         srv_cfg = oauth_platform_manager.get_oath_server_config()
         log.info(
             f"🌐 [系统] 启动 OAuth 回调服务器于 {srv_cfg['host']}:{srv_cfg['port']}..."
@@ -332,6 +399,7 @@ async def main():
             await asyncio.sleep(5)
 
         # 3. 执行核心逻辑
+        log.info("🚀 [核心] 开始执行报告生成逻辑...")
         await run_reporting_logic()
     finally:
         # 清理资源
@@ -346,14 +414,15 @@ async def main():
         except asyncio.CancelledError:
             pass
         except Exception:
-            pass
+            log.debug("[清理] 资源清理出现异常（非关键）")
+        log.info("✅ [清理] 资源清理完成")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        log.info("👋 用户中断程序")
     except Exception as e:
         print("\n" + "!" * 60)
         print("【运行时错误】程序执行过程中发生崩溃：")
@@ -361,6 +430,6 @@ if __name__ == "__main__":
         print("!" * 60)
         try:
             log.exception(f"Fatal error: {e}")
-        except:
+        except Exception:
             pass
         input("\n按 Enter 键退出程序...")

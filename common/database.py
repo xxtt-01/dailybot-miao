@@ -1,0 +1,88 @@
+"""SQLite 数据库封装，用于替代 JSON 文件持久化"""
+import sqlite3
+import os
+from datetime import datetime
+from typing import Optional
+from loguru import logger
+from utils.path_helper import get_app_dir
+
+
+class Database:
+    """SQLite 数据库管理器（单例）"""
+
+    _instance: Optional["Database"] = None
+
+    def __new__(cls, db_path: Optional[str] = None):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self, db_path: Optional[str] = None):
+        if self._initialized:
+            return
+        self._initialized = True
+        db_path = db_path or os.path.join(get_app_dir(), "dailybot.db")
+        self.db_path = db_path
+        self._init_tables()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_tables(self):
+        with self._get_conn() as conn:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS camouflage_history (
+                    id TEXT PRIMARY KEY, date TEXT NOT NULL, content TEXT,
+                    source_name TEXT, repo_path TEXT, platform TEXT,
+                    author TEXT, original_date TEXT,
+                    variants TEXT DEFAULT '[]', created_at TEXT DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_camouflage_date ON camouflage_history(date);
+                CREATE TABLE IF NOT EXISTS daily_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL,
+                    platform TEXT NOT NULL, summary TEXT NOT NULL, raw_data TEXT,
+                    is_camouflage INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_reports_date ON daily_reports(date);
+                CREATE TABLE IF NOT EXISTS run_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL,
+                    platform TEXT, status TEXT NOT NULL, message TEXT,
+                    created_at TEXT DEFAULT (datetime('now'))
+                );
+            """)
+        logger.debug(f"数据库已初始化: {self.db_path}")
+
+    def save_report(self, date, platform, summary, raw_data=None, is_camouflage=False):
+        with self._get_conn() as conn:
+            conn.execute(
+                "INSERT INTO daily_reports (date, platform, summary, raw_data, is_camouflage) VALUES (?, ?, ?, ?, ?)",
+                (date, platform, summary, raw_data, int(is_camouflage)),
+            )
+
+    def get_reports(self, date, platform=None, limit=10):
+        with self._get_conn() as conn:
+            if platform:
+                rows = conn.execute("SELECT * FROM daily_reports WHERE date=? AND platform=? ORDER BY created_at DESC LIMIT ?", (date, platform, limit)).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM daily_reports WHERE date=? ORDER BY created_at DESC LIMIT ?", (date, limit)).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_reports_by_date_range(self, start_date, end_date, limit=100):
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM daily_reports WHERE date BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ?", (start_date, end_date, limit)).fetchall()
+            return [dict(r) for r in rows]
+
+    def log_run(self, date, status, platform=None, message=None):
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO run_logs (date, platform, status, message) VALUES (?, ?, ?, ?)", (date, platform, status, message))
+
+    def get_run_logs(self, limit=50):
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM run_logs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            return [dict(r) for r in rows]
+
+
+db = Database()

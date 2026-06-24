@@ -8,6 +8,8 @@
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/fastapi-v0.100+-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/AI-DeepSeek%20%7C%20Gemini%20%7C%20Doubao-red?style=flat-square" alt="AI">
+  <img src="https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI">
+  <a href="https://github.com/Youarefortunate/dailybot-miao/actions/workflows/test.yml"><img src="https://github.com/Youarefortunate/dailybot-miao/actions/workflows/test.yml/badge.svg" alt="CI Status"></a>
 </div>
 
 ---
@@ -48,7 +50,22 @@
 
 ### 6. 🔌 MCP 协议原生适配
 - **即插即用（mcp）**：基于 `fastmcp` 实现，支持作为 MCP Server 接入 OpenClaw、Claude Desktop 等 AI 客户端。
-- **能力暴露（skill function calling）**：直接在对话框中通过自然语言触发“运行日报”、“查询工作流”、“查看配置”等指令，实现真正的“对话式办公”。
+- **能力暴露（skill function calling）**：直接在对话框中通过自然语言触发”运行日报”、”查询工作流”、”查看配置”等指令，实现真正的”对话式办公”。
+
+### 7. 🌐 多代码源支持
+- **GitLab / GitHub / Gitee**：支持三大主流代码托管平台作为提交记录采集源，配置灵活，切换无缝。
+
+### 8. 🗄️ SQLite 持久化存储
+- **轻量可靠**：内置 SQLite 数据库，缓存采集结果与运行记录，无需额外部署数据库服务。
+
+### 9. 🖥️ Web 管理面板
+- **可视化监控**：基于 FastAPI 构建的 Web 面板，实时查看运行状态与日报历史。
+- **API Key 认证**：面板访问受 API Key 保护，安全可控。
+- **访问地址**：`http://localhost:8001/admin/status?key=your_api_key`
+
+### 10. 🐳 Docker 多阶段构建
+- **一键部署**：提供 Dockerfile 多阶段构建，镜像体积小、启动快。
+- **开箱即用**：基于 Playwright 官方镜像，内置 Chromium 浏览器核心，无需额外安装驱动。
 
 ---
 
@@ -278,6 +295,31 @@ git push github
 
 ---
 
+## 🚀 快速开始
+
+### 1. 配置环境
+```bash
+cp .env.example .env
+# 编辑 .env 填入你的 API Key 和配置
+```
+
+### 2. 配置采集源
+编辑 `config/config.yaml`，配置 GitLab/GitHub/Gitee 仓库。
+
+### 3. 运行
+```bash
+pip install -r requirements.txt
+python dailybot_scheduler.py --once
+```
+
+### 4. 访问管理面板（可选）
+启动 OAuth 服务后访问:
+```
+http://localhost:8001/admin/status?key=your_api_key
+```
+
+---
+
 ## 🚀 极简上手指南
 
 ### 环境准备
@@ -441,11 +483,11 @@ python dailybot_scheduler.py
 {
   "mcpServers": {
     "DailyBot": {
-      "command": "D:\\backup\\DailyBot\\.venv\\Scripts\\python.exe",
+      "command": "D:\\daily-bot\\.venv\\Scripts\\python.exe",
       "args": ["-m", "mcp_server.server"],
-      "cwd": "D:\\backup\\DailyBot",
+      "cwd": "D:\\daily-bot",
       "env": {
-        "PYTHONPATH": "D:\\backup\\DailyBot"
+        "PYTHONPATH": "D:\\daily-bot"
       }
     }
   }

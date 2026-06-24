@@ -1,5 +1,6 @@
 .venv/
 __pycache__/
+*.pyc
 .agent/
 .env
 .vscode
@@ -12,4 +13,5 @@ build/
 dist/
 camouflage_history.json
 .scheduler.lock
-extra_report.md
+*.db
+.dailybot.lock

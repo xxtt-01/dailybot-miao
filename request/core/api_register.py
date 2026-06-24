@@ -277,6 +277,28 @@ class ApiRegister:
 
         return lambda p: {}, current_platform
 
+    def declare(self, name, key, url=None, method="GET"):
+        """
+        声明 API 接口（关键字参数风格）
+
+        用法:
+            apis.declare("repo_github", "get_commits", url="/path", method="GET")
+            apis.declare("ai_ollama", "chat", url="/path", method="POST")
+        """
+        url = url or key
+        # 从名称推断平台前缀（如 "repo_github" -> "github"）
+        platform = name.split("_", 1)[1] if "_" in name else name
+
+        # 首次声明此组时初始化配置
+        if name not in self._api_configs:
+            self._api_configs[name] = {"platform": platform}
+
+        # 以字符串格式注册： "GET /repos/{owner}/{repo}/commits"
+        self._api_configs[name][key] = f"{method.upper()} {url}"
+
+        # 重建 apis[name] 的 DotDict
+        self._register_api_by_name(name, {})
+
     def define(self, name, api_methods=None):
         if api_methods is None:
             api_methods = {}
