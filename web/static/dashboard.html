@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>日报喵 DailyBot 管理面板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
 /* ── Reset & Base ── */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -26,6 +27,35 @@
   --radius-sm:10px;
   --transition:0.35s cubic-bezier(.4,0,.2,1);
 }
+/* ── Light Theme ── */
+body.light-theme{
+  --bg:#f0f2f5;
+  --glass-bg:rgba(255,255,255,0.7);
+  --glass-border:rgba(0,0,0,0.08);
+  --glass-shadow:0 8px 32px rgba(0,0,0,0.08);
+  --text:#1a1a2e;
+  --text-dim:rgba(0,0,0,0.4);
+}
+body.light-theme .select-glass option{background:#fff;color:var(--text)}
+body.light-theme .header-key-input{background:rgba(0,0,0,0.04)}
+body.light-theme .input-glass,body.light-theme .select-glass{background:rgba(0,0,0,0.04)}
+body.light-theme .btn-ghost{background:rgba(0,0,0,0.06)}
+body.light-theme .btn-ghost:hover{background:rgba(0,0,0,0.1)}
+body.light-theme .tabs{background:rgba(0,0,0,0.03)}
+body.light-theme tbody tr:hover{background:rgba(0,0,0,0.03)}
+body.light-theme tbody td{border-bottom-color:rgba(0,0,0,0.06)}
+body.light-theme .skeleton{background:rgba(0,0,0,0.08)}
+body.light-theme .log-item{border-bottom-color:rgba(0,0,0,0.06)}
+body.light-theme .stat-card:hover{border-color:rgba(0,0,0,0.15)}
+body.light-theme .modal-overlay{background:rgba(0,0,0,0.4)}
+body.light-theme .trigger-progress{background:rgba(0,0,0,0.03)}
+body.light-theme .source-card{background:rgba(255,255,255,0.5)}
+body.light-theme .source-repo-item{background:rgba(0,0,0,0.03)}
+body.light-theme .scheduler-item{background:rgba(255,255,255,0.5)}
+body.light-theme .config-collapse-wrap>div{border-left-color:rgba(0,0,0,0.08)!important}
+body.light-theme ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15)}
+body.light-theme ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.25)}
+
 body{
   font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   background:var(--bg);
@@ -109,6 +139,15 @@ body::before{
 }
 .header-key-input input::placeholder{color:var(--text-dim)}
 .header-key-input label{font-size:12px;color:var(--text-dim);white-space:nowrap}
+
+/* ── Theme Toggle ── */
+.theme-btn{
+  background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+  border-radius:50%;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;transition:var(--transition);
+}
+.theme-btn:hover{background:rgba(255,255,255,0.12);transform:scale(1.1)}
 
 /* ── Container ── */
 .container{max-width:1280px;margin:0 auto;padding:0 24px 40px}
@@ -309,6 +348,26 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
 .skeleton-line:last-child{width:60%}
 @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 
+/* ── Source Management ── */
+.source-card{padding:16px;margin-bottom:12px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)}
+.source-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.source-card-title{font-size:15px;font-weight:600}
+.source-repo-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:6px;font-size:13px}
+.source-repo-item:last-child{margin-bottom:0}
+.source-add-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--glass-border)}
+
+/* ── Scheduler ── */
+.scheduler-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.scheduler-item{padding:16px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)}
+.scheduler-item .slabel{font-size:12px;color:var(--text-dim);margin-bottom:4px}
+.scheduler-item .svalue{font-size:16px;font-weight:600}
+.scheduler-tasks{margin-bottom:20px}
+.scheduler-tasks .task-item{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.2);font-size:13px;margin:0 6px 6px 0}
+
+/* ── Stats Days Toggle ── */
+.stats-days-btn{padding:4px 12px;font-size:12px}
+.stats-days-btn.active{background:rgba(102,126,234,0.25);color:#fff;border-color:rgba(102,126,234,0.4)}
+
 /* ── Responsive ── */
 @media(max-width:768px){
   .header{padding:16px 20px;flex-direction:column;align-items:flex-start}
@@ -320,6 +379,8 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
   .log-item{flex-direction:column;gap:4px}
   .header-key-input{width:100%}
   .header-key-input input{flex:1}
+  .source-add-form{flex-direction:column;align-items:stretch}
+  .scheduler-grid{grid-template-columns:1fr 1fr}
 }
 
 /* ── Scrollbar ── */
@@ -350,6 +411,7 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
       <label>🔑 Key</label>
       <input type="text" id="apiKeyInput" value="dailybot-admin" placeholder="API Key" spellcheck="false">
     </div>
+    <button class="theme-btn" id="themeToggle" onclick="toggleTheme()" title="切换主题">☀️</button>
     <span class="header-time" id="headerTime">--</span>
   </div>
 </header>
@@ -389,6 +451,10 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
     <button class="tab-btn active" data-tab="reports">📋 日报历史</button>
     <button class="tab-btn" data-tab="logs">📜 运行日志</button>
     <button class="tab-btn" data-tab="config">⚙️ 配置查看</button>
+    <button class="tab-btn" data-tab="stats">📊 数据统计</button>
+    <button class="tab-btn" data-tab="camouflage">🎭 伪装素材</button>
+    <button class="tab-btn" data-tab="sources">📡 采集源</button>
+    <button class="tab-btn" data-tab="scheduler">⏰ 定时任务</button>
   </div>
 
   <!-- Tab: Reports -->
@@ -440,6 +506,80 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
     </div>
   </div>
 
+  <!-- Tab: Stats -->
+  <div class="tab-content" id="tabStats">
+    <div class="panel glass">
+      <div class="panel-header">
+        <div class="panel-title">📊 数据统计</div>
+        <div class="panel-controls">
+          <button class="btn btn-ghost stats-days-btn active" id="statsDays7" onclick="switchStatsDays(7)">7日</button>
+          <button class="btn btn-ghost stats-days-btn" id="statsDays30" onclick="switchStatsDays(30)">30日</button>
+        </div>
+      </div>
+      <div id="statsChartsArea">
+        <div style="margin-bottom:8px"><span class="text-dim text-sm">日报提交趋势</span></div>
+        <div id="statsTrendChart" style="width:100%;height:300px"></div>
+        <div style="margin:24px 0 8px"><span class="text-dim text-sm">平台运行统计</span></div>
+        <div id="statsPlatformChart" style="width:100%;height:300px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Camouflage -->
+  <div class="tab-content" id="tabCamouflage">
+    <div class="panel glass">
+      <div class="panel-header">
+        <div class="panel-title">🎭 伪装素材</div>
+        <div class="panel-controls">
+          <button class="btn btn-ghost" onclick="loadCamouflage()">🔄 刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="camouflageContent">
+        <div class="empty-state"><div class="icon">🎭</div><p>加载中...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Sources -->
+  <div class="tab-content" id="tabSources">
+    <div class="panel glass">
+      <div class="panel-header">
+        <div class="panel-title">📡 采集源</div>
+        <div class="panel-controls">
+          <button class="btn btn-ghost" onclick="loadSources()">🔄 刷新</button>
+        </div>
+      </div>
+      <div id="sourcesContent">
+        <div class="empty-state"><div class="icon">📡</div><p>加载中...</p></div>
+      </div>
+      <div class="source-add-form">
+        <select class="select-glass" id="sourcePlatform">
+          <option value="github">github</option>
+          <option value="gitlab">gitlab</option>
+          <option value="gitee">gitee</option>
+        </select>
+        <input type="text" class="input-glass" id="sourceRepoPath" placeholder="仓库路径 (如 user/repo)" style="flex:1;min-width:150px">
+        <input type="text" class="input-glass" id="sourceBranch" value="main" placeholder="分支" style="width:100px">
+        <button class="btn btn-primary" onclick="addSource()">➕ 添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Scheduler -->
+  <div class="tab-content" id="tabScheduler">
+    <div class="panel glass">
+      <div class="panel-header">
+        <div class="panel-title">⏰ 定时任务</div>
+        <div class="panel-controls">
+          <button class="btn btn-ghost" onclick="loadScheduler()">🔄 刷新</button>
+        </div>
+      </div>
+      <div id="schedulerContent">
+        <div class="empty-state"><div class="icon">⏰</div><p>加载中...</p></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Trigger Button -->
   <div class="glass" style="padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
     <div>
@@ -452,6 +592,19 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
   </div>
 </div>
 
+<!-- Report Detail Modal -->
+<div class="modal-overlay" id="reportDetailModal" style="display:none" onclick="if(event.target===this)closeReportDetail()">
+  <div class="modal-box glass">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:18px">📄 日报详情</h2>
+      <button class="btn btn-ghost" onclick="closeReportDetail()" style="padding:6px 12px;font-size:14px">✕</button>
+    </div>
+    <div id="reportDetailContent">
+      <div class="skeleton" style="padding:20px"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Config ──
 const BASE = '';
@@ -459,6 +612,9 @@ const LS_KEY = 'dailybot_api_key';
 
 // ── State ──
 let state = { key: '', refreshing: false };
+let statsDays = 7;
+let trendChart = null;
+let platformChart = null;
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -468,6 +624,9 @@ document.addEventListener('DOMContentLoaded', () => {
   state.key = document.getElementById('apiKeyInput').value;
   document.getElementById('reportDate').value = new Date().toISOString().slice(0,10);
 
+  // Restore theme
+  initTheme();
+
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -475,6 +634,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+
+      // Init charts when stats tab is shown
+      if (btn.dataset.tab === 'stats') {
+        setTimeout(() => initStatsCharts(), 100);
+      }
     });
   });
 
@@ -492,6 +656,17 @@ document.addEventListener('DOMContentLoaded', () => {
   updateClock();
   setInterval(updateClock, 1000);
 
+  // ESC key closes modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeReportDetail();
+  });
+
+  // Window resize → resize charts
+  window.addEventListener('resize', () => {
+    if (trendChart) trendChart.resize();
+    if (platformChart) platformChart.resize();
+  });
+
   // Load all
   loadAll();
 });
@@ -501,13 +676,13 @@ async function api(path, opts = {}) {
   const url = BASE + path + (path.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(state.key);
   const res = await fetch(url, { ...opts, headers: { 'Accept': 'application/json', ...opts.headers } });
   if (res.status === 401) throw new Error('API Key 无效，请在右上角输入正确的 Key');
-  if (!res.ok) throw new Error(`请求失败 (${res.status})`);
+  if (!res.ok) throw new Error('请求失败 (' + res.status + ')');
   return res.json();
 }
 
 // ── Load All ──
 async function loadAll() {
-  await Promise.all([loadStatus(), loadReports(), loadLogs(), loadConfig()]);
+  await Promise.all([loadStatus(), loadReports(), loadLogs(), loadConfig(), loadCamouflage(), loadSources(), loadScheduler()]);
 }
 
 // ── Status ──
@@ -526,7 +701,7 @@ async function loadStatus() {
     const currentVal = sel.value;
     sel.innerHTML = '<option value="">全部平台</option>';
     (data.enabled_workflows || []).forEach(wf => {
-      sel.innerHTML += `<option value="${wf}">${wf}</option>`;
+      sel.innerHTML += '<option value="' + escHtml(wf) + '">' + escHtml(wf) + '</option>';
     });
     sel.value = currentVal;
   } catch (e) {
@@ -552,24 +727,67 @@ async function loadReports() {
       return;
     }
 
-    let html = '<table><thead><tr><th>时间</th><th>平台</th><th>摘要</th><th>类型</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>时间</th><th>平台</th><th>摘要</th><th>类型</th><th>操作</th></tr></thead><tbody>';
     reports.forEach(r => {
       const time = (r.created_at || '').slice(0, 19).replace('T', ' ');
       const isCamo = r.is_camouflage == 1;
       const summary = (r.summary || '').length > 120 ? (r.summary || '').slice(0, 120) + '…' : (r.summary || '');
-      html += `<tr>
-        <td class="text-dim text-sm mono">${time}</td>
-        <td><span class="tag tag-info">${escHtml(r.platform || '')}</span></td>
-        <td class="text-sm">${escHtml(summary)}</td>
-        <td>${isCamo ? '<span class="tag tag-camo">伪装</span>' : '<span class="tag tag-success">正常</span>'}</td>
-      </tr>`;
+      html += '<tr>' +
+        '<td class="text-dim text-sm mono">' + time + '</td>' +
+        '<td><span class="tag tag-info">' + escHtml(r.platform || '') + '</span></td>' +
+        '<td class="text-sm">' + escHtml(summary) + '</td>' +
+        '<td>' + (isCamo ? '<span class="tag tag-camo">伪装</span>' : '<span class="tag tag-success">正常</span>') + '</td>' +
+        '<td><button class="btn btn-ghost" onclick="openReportDetail(' + r.id + ')" style="padding:4px 10px;font-size:12px">📄 详情</button></td>' +
+        '</tr>';
     });
     html += '</tbody></table>';
-    if (data.count !== undefined) html += `<div class="text-dim text-sm" style="margin-top:12px">共 ${data.count} 条记录</div>`;
+    if (data.count !== undefined) html += '<div class="text-dim text-sm" style="margin-top:12px">共 ' + data.count + ' 条记录</div>';
     wrap.innerHTML = html;
   } catch (e) {
-    wrap.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${escHtml(e.message)}</p></div>`;
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
   }
+}
+
+// ── Report Detail Modal ──
+async function openReportDetail(id) {
+  const modal = document.getElementById('reportDetailModal');
+  const content = document.getElementById('reportDetailContent');
+  modal.style.display = 'flex';
+  content.innerHTML = '<div class="skeleton" style="padding:20px"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+
+  try {
+    const data = await api('/admin/reports/detail?id=' + id);
+    const r = data.report || {};
+    const isCamo = r.is_camouflage == 1;
+    const time = (r.created_at || '').slice(0, 19).replace('T', ' ');
+
+    let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">' +
+      '<div><span class="text-dim">日期</span><br><strong>' + escHtml(r.date || time) + '</strong></div>' +
+      '<div><span class="text-dim">平台</span><br><span class="tag tag-info">' + escHtml(r.platform || '') + '</span></div>' +
+      '<div><span class="text-dim">类型</span><br>' + (isCamo ? '<span class="tag tag-camo">伪装</span>' : '<span class="tag tag-success">正常</span>') + '</div>' +
+      '<div><span class="text-dim">创建时间</span><br><span class="text-sm">' + time + '</span></div>' +
+      '</div>' +
+      '<div style="margin-bottom:16px">' +
+      '<div class="text-dim" style="margin-bottom:6px">完整摘要</div>' +
+      '<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;font-size:14px;line-height:1.7;white-space:pre-wrap">' + escHtml(r.summary || '无') + '</div>' +
+      '</div>';
+
+    if (r.raw_data) {
+      const rawStr = typeof r.raw_data === 'string' ? r.raw_data : JSON.stringify(r.raw_data, null, 2);
+      html += '<div style="margin-bottom:16px">' +
+        '<div class="text-dim" style="margin-bottom:6px">原始数据 (raw_data)</div>' +
+        '<pre style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;font-size:12px;overflow-x:auto;line-height:1.5;white-space:pre-wrap;max-height:300px;overflow-y:auto">' + escHtml(rawStr) + '</pre>' +
+        '</div>';
+    }
+
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
+  }
+}
+
+function closeReportDetail() {
+  document.getElementById('reportDetailModal').style.display = 'none';
 }
 
 // ── Logs ──
@@ -592,16 +810,16 @@ async function loadLogs() {
       if (l.status === 'success') statusTag = '<span class="tag tag-success">✅ 成功</span>';
       else if (l.status === 'failed') statusTag = '<span class="tag tag-failed">❌ 失败</span>';
       else if (l.status === 'no_data') statusTag = '<span class="tag tag-warning">📭 无数据</span>';
-      html += `<div class="log-item">
-        <span class="log-time">${time}</span>
-        <span class="log-status">${statusTag}</span>
-        <span class="log-msg">${l.platform ? escHtml('[' + l.platform + '] ') : ''}${escHtml(l.message || '')}</span>
-      </div>`;
+      html += '<div class="log-item">' +
+        '<span class="log-time">' + time + '</span>' +
+        '<span class="log-status">' + statusTag + '</span>' +
+        '<span class="log-msg">' + (l.platform ? escHtml('[' + l.platform + '] ') : '') + escHtml(l.message || '') + '</span>' +
+        '</div>';
     });
     html += '</div>';
     wrap.innerHTML = html;
   } catch (e) {
-    wrap.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${escHtml(e.message)}</p></div>`;
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
   }
 }
 
@@ -614,18 +832,19 @@ async function loadConfig() {
     const html = renderConfigTree(data);
     wrap.innerHTML = html;
   } catch (e) {
-    wrap.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${escHtml(e.message)}</p></div>`;
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
   }
 }
 
-function renderConfigTree(obj, depth = 0) {
+function renderConfigTree(obj, depth) {
+  if (depth === undefined) depth = 0;
   if (obj === null || obj === undefined) return '<span class="config-null">null</span>';
   if (typeof obj === 'string') return '<span class="config-string">"' + escHtml(obj) + '"</span>';
   if (typeof obj === 'number') return '<span class="config-number">' + obj + '</span>';
   if (typeof obj === 'boolean') return '<span class="config-bool">' + obj + '</span>';
   if (Array.isArray(obj)) {
     if (obj.length === 0) return '<span class="config-null">[]</span>';
-    let items = obj.map((item, i) => {
+    let items = obj.map(function(item, i) {
       const isComplex = typeof item === 'object' && item !== null;
       const toggle = isComplex ? ' <span class="config-toggle" onclick="toggleConfigCollapse(this)">▼</span>' : '';
       return '<div style="padding-left:20px;border-left:1px solid rgba(255,255,255,0.06);margin:2px 0">' +
@@ -637,7 +856,7 @@ function renderConfigTree(obj, depth = 0) {
   if (typeof obj === 'object') {
     const keys = Object.keys(obj);
     if (keys.length === 0) return '<span class="config-null">{}</span>';
-    let items = keys.map(k => {
+    let items = keys.map(function(k) {
       const v = obj[k];
       const isComplex = typeof v === 'object' && v !== null;
       const toggle = isComplex ? ' <span class="config-toggle" onclick="toggleConfigCollapse(this)">▼</span>' : '';
@@ -670,7 +889,7 @@ async function triggerReport() {
     const data = await api('/admin/trigger', { method: 'POST' });
     showToast('✅ ' + (data.message || '日报生成完成！'), 'success');
     // Refresh data
-    setTimeout(() => { loadAll(); }, 1000);
+    setTimeout(function() { loadAll(); }, 1000);
   } catch (e) {
     showToast('❌ ' + e.message, 'error');
   } finally {
@@ -679,18 +898,308 @@ async function triggerReport() {
   }
 }
 
+// ── Stats Charts ──
+function initStatsCharts() {
+  if (typeof echarts === 'undefined') {
+    document.getElementById('statsChartsArea').innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>ECharts 库加载失败，请刷新页面重试</p></div>';
+    return;
+  }
+  const trendEl = document.getElementById('statsTrendChart');
+  const platformEl = document.getElementById('statsPlatformChart');
+  if (!trendEl || !platformEl) return;
+
+  if (!trendChart) {
+    trendChart = echarts.init(trendEl);
+    platformChart = echarts.init(platformEl);
+    loadStatsTrend();
+    loadStatsPlatform();
+  } else {
+    trendChart.resize();
+    platformChart.resize();
+  }
+}
+
+async function loadStatsTrend() {
+  if (!trendChart) return;
+  try {
+    const data = await api('/admin/stats/trend?days=' + statsDays);
+    trendChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'category', data: data.days || [], axisLabel: { color: '#999' } },
+      yAxis: { type: 'value', axisLabel: { color: '#999' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
+      series: [{
+        type: 'bar',
+        data: data.counts || [],
+        itemStyle: {
+          borderRadius: [6,6,0,0],
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#667eea' },
+            { offset: 1, color: '#764ba2' }
+          ])
+        }
+      }]
+    });
+  } catch (e) {
+    showToast('加载趋势数据失败: ' + e.message, 'error');
+  }
+}
+
+async function loadStatsPlatform() {
+  if (!platformChart) return;
+  try {
+    const data = await api('/admin/stats/platform');
+    const platforms = data.platforms || [];
+    let totalSuccess = 0, totalFailed = 0, totalNoData = 0;
+    platforms.forEach(function(p) {
+      totalSuccess += (p.success || 0);
+      totalFailed += (p.failed || 0);
+      totalNoData += (p.no_data || 0);
+    });
+    platformChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        data: [
+          { value: totalSuccess, name: '成功', itemStyle: { color: '#43e97b' } },
+          { value: totalFailed, name: '失败', itemStyle: { color: '#f5576c' } },
+          { value: totalNoData, name: '无数据', itemStyle: { color: '#f6d365' } }
+        ],
+        label: { color: '#999' },
+        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' } }
+      }]
+    });
+  } catch (e) {
+    showToast('加载平台统计失败: ' + e.message, 'error');
+  }
+}
+
+function switchStatsDays(days) {
+  statsDays = days;
+  document.getElementById('statsDays7').className = 'btn btn-ghost stats-days-btn' + (days === 7 ? ' active' : '');
+  document.getElementById('statsDays30').className = 'btn btn-ghost stats-days-btn' + (days === 30 ? ' active' : '');
+  loadStatsTrend();
+}
+
+// ── Camouflage ──
+async function loadCamouflage() {
+  const wrap = document.getElementById('camouflageContent');
+  wrap.innerHTML = '<div class="skeleton" style="padding:20px"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+  try {
+    const data = await api('/admin/camouflage');
+    const items = data.items || [];
+
+    if (items.length === 0) {
+      wrap.innerHTML = '<div class="empty-state"><div class="icon">🎭</div><p>暂无伪装素材</p></div>';
+      return;
+    }
+
+    let html = '<table><thead><tr><th>ID</th><th>来源项目</th><th>内容预览</th><th>平台</th><th>最后使用</th><th>变体数</th><th>操作</th></tr></thead><tbody>';
+    items.forEach(function(item) {
+      const lastUsed = item.last_used ? String(item.last_used).slice(0, 10) : '-';
+      html += '<tr>' +
+        '<td class="text-dim text-sm mono">' + escHtml(String(item.id)) + '</td>' +
+        '<td class="text-sm">' + escHtml(item.source_name || '-') + '</td>' +
+        '<td class="text-sm">' + escHtml((item.content_preview || '').slice(0, 80)) + '</td>' +
+        '<td><span class="tag tag-info">' + escHtml(item.platform || '') + '</span></td>' +
+        '<td class="text-dim text-sm">' + lastUsed + '</td>' +
+        '<td class="text-sm">' + (item.variants_count || 0) + '</td>' +
+        '<td><button class="btn btn-ghost" onclick="deleteCamouflage(' + item.id + ')" style="padding:4px 10px;font-size:12px;color:var(--danger)">🗑️ 删除</button></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
+  }
+}
+
+async function deleteCamouflage(id) {
+  if (!confirm('确定要删除这条伪装素材吗？')) return;
+  try {
+    await api('/admin/camouflage/' + id, { method: 'DELETE' });
+    showToast('✅ 伪装素材已删除', 'success');
+    loadCamouflage();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── Sources ──
+async function loadSources() {
+  const wrap = document.getElementById('sourcesContent');
+  wrap.innerHTML = '<div class="skeleton" style="padding:20px"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+  try {
+    const data = await api('/admin/sources');
+    const sources = data.sources || [];
+
+    if (sources.length === 0) {
+      wrap.innerHTML = '<div class="empty-state"><div class="icon">📡</div><p>暂无采集源配置</p></div>';
+      return;
+    }
+
+    let html = '';
+    sources.forEach(function(s) {
+      const enabled = s.enabled;
+      const statusIcon = enabled ? '✅' : '⛔';
+      html += '<div class="source-card">' +
+        '<div class="source-card-header">' +
+        '<span class="source-card-title">' + statusIcon + ' ' + escHtml(s.platform || '未知') + '</span>' +
+        '<span class="tag ' + (enabled ? 'tag-success' : 'tag-failed') + '">' + (enabled ? '已启用' : '未启用') + '</span>' +
+        '</div>';
+      if (s.repos && s.repos.length > 0) {
+        html += '<div>';
+        s.repos.forEach(function(repo, idx) {
+          html += '<div class="source-repo-item">' +
+            '<span><span class="mono">' + escHtml(repo.path || '') + '</span> <span class="text-dim">(' + escHtml(repo.branch || 'main') + ')</span></span>' +
+            '<button class="btn btn-ghost" onclick="deleteSource(\'' + escHtml(s.platform) + '\',' + idx + ')" style="padding:2px 8px;font-size:11px;color:var(--danger)" title="删除此仓库">🗑️</button>' +
+            '</div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div class="text-dim text-sm" style="padding:8px 0">暂无仓库</div>';
+      }
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
+  }
+}
+
+async function addSource() {
+  const platform = document.getElementById('sourcePlatform').value;
+  const repoPath = document.getElementById('sourceRepoPath').value.trim();
+  const branch = document.getElementById('sourceBranch').value.trim() || 'main';
+
+  if (!repoPath) {
+    showToast('请输入仓库路径', 'error');
+    return;
+  }
+
+  try {
+    await api('/admin/sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform: platform, repo_path: repoPath, branch: branch })
+    });
+    showToast('✅ 采集源已添加', 'success');
+    document.getElementById('sourceRepoPath').value = '';
+    loadSources();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+async function deleteSource(platform, index) {
+  if (!confirm('确定要删除此仓库吗？')) return;
+  try {
+    await api('/admin/sources/' + encodeURIComponent(platform) + '/' + index, { method: 'DELETE' });
+    showToast('✅ 仓库已删除', 'success');
+    loadSources();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── Scheduler ──
+async function loadScheduler() {
+  const wrap = document.getElementById('schedulerContent');
+  wrap.innerHTML = '<div class="skeleton" style="padding:20px"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+  try {
+    const data = await api('/admin/scheduler');
+    const config = data.config || {};
+    const tasks = data.installed_tasks || [];
+
+    let html = '<div class="scheduler-grid">' +
+      '<div class="scheduler-item"><div class="slabel">启用状态</div><div class="svalue">' + (config.enabled ? '<span class="tag tag-success">已启用</span>' : '<span class="tag tag-failed">未启用</span>') + '</div></div>' +
+      '<div class="scheduler-item"><div class="slabel">自动启动</div><div class="svalue">' + (config.auto_start ? '✅ 是' : '❌ 否') + '</div></div>' +
+      '<div class="scheduler-item"><div class="slabel">执行时间</div><div class="svalue">' + escHtml(config.default_time || '-') + '</div></div>' +
+      '</div>';
+
+    if (tasks.length > 0) {
+      html += '<div class="scheduler-tasks"><div class="text-dim text-sm" style="margin-bottom:8px">已安装的任务</div>';
+      tasks.forEach(function(t) {
+        html += '<span class="task-item">📌 ' + escHtml(t) + '</span>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+      '<button class="btn btn-primary" onclick="installScheduler()">📦 安装定时任务</button>' +
+      '<button class="btn btn-ghost" onclick="uninstallScheduler()" style="color:var(--danger)">🗑️ 卸载所有任务</button>' +
+      '</div>';
+
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>' + escHtml(e.message) + '</p></div>';
+  }
+}
+
+async function installScheduler() {
+  const time = prompt('请输入执行时间（格式 HH:MM）：', '18:20');
+  if (!time) return;
+  const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (!timeRegex.test(time)) {
+    showToast('时间格式无效，请使用 HH:MM 格式', 'error');
+    return;
+  }
+  try {
+    const data = await api('/admin/scheduler/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ time: time, weekdays: [1,2,3,4,5] })
+    });
+    showToast('✅ ' + (data.message || '定时任务已安装'), 'success');
+    loadScheduler();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+async function uninstallScheduler() {
+  if (!confirm('确定要卸载所有定时任务吗？')) return;
+  try {
+    const data = await api('/admin/scheduler/uninstall', { method: 'POST' });
+    showToast('✅ ' + (data.message || '定时任务已卸载'), 'success');
+    loadScheduler();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  document.getElementById('themeToggle').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const btn = document.getElementById('themeToggle');
+  if (saved === 'light') {
+    document.body.classList.add('light-theme');
+    btn.textContent = '🌙';
+  } else {
+    btn.textContent = '☀️';
+  }
+}
+
 // ── Toast ──
-function showToast(message, type = 'info') {
+function showToast(message, type) {
+  if (type === undefined) type = 'info';
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = 'toast toast-' + type;
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => {
+  setTimeout(function() {
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(100%)';
     toast.style.transition = '0.3s ease';
-    setTimeout(() => toast.remove(), 300);
+    setTimeout(function() { toast.remove(); }, 300);
   }, 4000);
 }
 

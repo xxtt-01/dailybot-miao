@@ -13,6 +13,23 @@
   - 前端通过 `?key=xxx` 鉴权调用现有 API
 - **影响范围:** 新增 `web/static/dashboard.html`，`web/routes.py` 新增 trigger 端点
 
+## 2026-06-24 18:55: 仪表盘新增 6 个功能（详情弹窗/图表/伪装/采集源/调度器/主题切换）
+- **文件：**
+  - `web/static/dashboard.html`
+- **原因：** 管理面板需要更多功能 Tab 和交互能力
+- **决策：**
+  - 复用已有 glassmorphism 样式体系，新增 4 个功能 Tab
+  - ECharts CDN 避免 npm 依赖，延迟初始化解决 display:none 渲染问题
+  - 主题切换使用 CSS 变量覆盖 + localStorage 持久化
+- **影响范围：** `dashboard.html` 从 705 行增至 1213 行
+- **新增功能：**
+  1. 日报详情弹窗 — 完整 summary + raw_data 格式化 JSON 展示
+  2. 数据统计 — ECharts 柱状图 + 饼图，支持 7日/30日切换，响应式 resize
+  3. 伪装素材管理 — 列表展示 + 确认删除
+  4. 采集源管理 — 平台卡片 + 仓库增删表单
+  5. 定时任务管理 — 状态卡片 + 安装/卸载操作
+  6. 深色/浅色主题切换 — CSS 变量 + localStorage 持久化
+
 ## 2026-06-24: 新增 11 个 admin API 端点
 - **文件:**
   - `web/routes.py`
