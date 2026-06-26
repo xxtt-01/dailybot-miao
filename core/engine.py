@@ -240,7 +240,7 @@ async def run_reporting_logic():
                     date=datetime.now().strftime("%Y-%m-%d"),
                     platform=wf.WORKFLOW_NAME,
                     summary=summary,
-                    raw_report=ctx.get("raw_report", "") if isinstance(ctx, dict) else "",
+                    raw_data=ctx.get("raw_report", "") if isinstance(ctx, dict) else "",
                     is_camouflage=bool(is_camouflage),
                 )
                 db.log_run(

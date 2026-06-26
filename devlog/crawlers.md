@@ -31,3 +31,11 @@
 - **原因:** `_fetch_commits` 内部 try/except 捕获所有异常并返回 `[]`，导致 `collect_source` 中的 `isinstance(result, list)` 始终为 True，限流重试逻辑成为死代码。触发 API 限流时采集无重试直接返回空结果。
 - **决策:** `_fetch_commits` 不再内部捕获异常，改为 `resp.raise_for_status()` 向上传播 HTTP 错误。`fetch_activities` 和 `_fetch_all_commits` 分别 catch 并返回 `[]`/跳过单仓库；`collect_source` catch `httpx.HTTPStatusError` 识别 403/429 并重试。
 - **影响范围:** GitHub/Gitee 爬虫的 `_fetch_commits`、`fetch_activities`、`_fetch_all_commits`、`collect_source`
+
+## 2026-06-26: 爬虫日志等级 DEBUG→WARNING + 非列表响应检测
+- **文件:**
+  - `crawlers/impl/github_crawler.py`
+  - `crawlers/impl/gitee_crawler.py`
+- **原因:** Gitee API 可能返回非列表响应（如错误消息字典），此前被 `_fetch_commits` 的 `isinstance` 检查静默转为 `[]`，调用方完全不知情。同时 `_fetch_all_commits` 中每个仓库的异常日志为 DEBUG 级别，默认日志不显示。
+- **决策:** 将 `_fetch_all_commits` 中 per-repo 异常日志从 `logger.debug` 提升为 `logger.warning`；`_fetch_commits` 在 API 返回非列表时输出警告日志。
+- **影响范围:** 运行日志可见性

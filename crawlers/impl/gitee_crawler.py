@@ -40,7 +40,10 @@ class GiteeCrawler(BaseCrawler):
             resp = await client.get(url, params=params, timeout=30)
             resp.raise_for_status()
             result = resp.json()
-            return result if isinstance(result, list) else []
+            if not isinstance(result, list):
+                logger.warning(f"Gitee [{owner}/{repo}] API 返回非列表: {str(result)[:200]}")
+                return []
+            return result
 
     async def _fetch_all_repos(self) -> list:
         """从 Gitee API 自动发现用户的所有仓库"""
@@ -104,7 +107,7 @@ class GiteeCrawler(BaseCrawler):
                         c["_branch_name"] = branch
                     all_commits.extend(result)
             except Exception as e:
-                logger.debug(f"Gitee [{owner_repo}] 跳过: {e}")
+                logger.warning(f"Gitee [{owner_repo}] 跳过: {e}")
         return all_commits
 
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
