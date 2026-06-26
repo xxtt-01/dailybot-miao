@@ -16,9 +16,19 @@ if __name__ == "__main__":
 
     if not args:
         # 默认：执行一次日报生成
-        from dailybot_scheduler import execute_trigger, setup_logging
-        log = setup_logging()
-        execute_trigger(log)
+        try:
+            from dailybot_scheduler import execute_trigger, setup_logging
+            log = setup_logging()
+            execute_trigger(log)
+        except Exception as e:
+            print(f"\n❌ 程序运行出错: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            try:
+                input("\n按 Enter 键退出...")
+            except EOFError:
+                pass  # 非交互环境（如管道）下跳过
     elif "--scheduler" in args:
         os.execvp(sys.executable, [sys.executable, "dailybot_scheduler.py"])
     elif "--status" in args:
