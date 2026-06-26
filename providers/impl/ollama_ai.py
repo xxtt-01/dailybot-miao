@@ -33,7 +33,10 @@ class OllamaAI(BaseAIProvider):
                     json=payload,
                     timeout=kwargs.get("timeout", 120),
                 )
-                result = resp.json()
+            if resp.status_code != 200:
+                logger.error(f"[Ollama] HTTP {resp.status_code}: {resp.text[:200]}")
+                return f"API Error: HTTP {resp.status_code}"
+            result = resp.json()
             if isinstance(result, dict):
                 choices = result.get("choices", [])
                 if choices:

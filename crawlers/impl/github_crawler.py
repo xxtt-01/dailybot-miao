@@ -32,19 +32,13 @@ class GithubCrawler(BaseCrawler):
         return cfg.get("repos", [])
 
     async def _fetch_commits(self, owner: str, repo: str, params: dict, headers: dict) -> list:
-        """直接使用 httpx 调用 GitHub Commits API"""
+        """直接使用 httpx 调用 GitHub Commits API，HTTP 异常向上传播"""
         url = f"{self._api_base_url}/repos/{owner}/{repo}/commits"
-        try:
-            async with httpx.AsyncClient(verify=False) as client:
-                resp = await client.get(url, params=params, headers=headers, timeout=30)
-                if resp.status_code != 200:
-                    logger.error(f"GitHub [{owner}/{repo}] HTTP {resp.status_code}")
-                    return []
-                result = resp.json()
-                return result if isinstance(result, list) else []
-        except Exception as e:
-            logger.error(f"GitHub [{owner}/{repo}] 请求失败: {e}")
-            return []
+        async with httpx.AsyncClient(verify=False) as client:
+            resp = await client.get(url, params=params, headers=headers, timeout=30)
+            resp.raise_for_status()
+            result = resp.json()
+            return result if isinstance(result, list) else []
 
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
         # 自动发现模式：先拉取所有仓库，再采集全部 commits
@@ -62,10 +56,14 @@ class GithubCrawler(BaseCrawler):
         if token:
             headers["Authorization"] = f"Bearer {token}"
         params = {"sha": branch, "since": query_params.get("since"), "until": query_params.get("until"), "per_page": 100}
-        result = await self._fetch_commits(owner, repo, params, headers)
-        if len(result) >= 100:
-            logger.warning(f"GitHub [{owner_repo}] 返回{len(result)}条（达单页上限）")
-        return result
+        try:
+            result = await self._fetch_commits(owner, repo, params, headers)
+            if len(result) >= 100:
+                logger.warning(f"GitHub [{owner_repo}] 返回{len(result)}条（达单页上限）")
+            return result
+        except Exception as e:
+            logger.error(f"GitHub [{owner_repo}] 采集失败: {e}")
+            return []
 
     async def _fetch_all_repos(self) -> list:
         """从 GitHub API 自动发现用户的所有仓库（使用 /user/repos 端点）"""
@@ -120,12 +118,15 @@ class GithubCrawler(BaseCrawler):
                 continue
             owner, repo_name = owner_repo.split("/", 1)
             params = {"sha": branch, "since": since, "until": until, "per_page": 100}
-            result = await self._fetch_commits(owner, repo_name, params, headers)
-            if result:
-                for c in result:
-                    c["_repo_name"] = owner_repo
-                    c["_branch_name"] = branch
-                all_commits.extend(result)
+            try:
+                result = await self._fetch_commits(owner, repo_name, params, headers)
+                if result:
+                    for c in result:
+                        c["_repo_name"] = owner_repo
+                        c["_branch_name"] = branch
+                    all_commits.extend(result)
+            except Exception as e:
+                logger.debug(f"GitHub [{owner_repo}] 跳过: {e}")
         return all_commits
 
     def get_api_token(self) -> str:
@@ -158,21 +159,22 @@ class GithubCrawler(BaseCrawler):
         params = {"sha": branch, "since": since.isoformat(), "until": until.isoformat(), "per_page": 100}
         max_retries = 3
         for attempt in range(max_retries):
-            result = await self._fetch_commits(owner, repo, params, headers)
-            if isinstance(result, list):
+            try:
+                result = await self._fetch_commits(owner, repo, params, headers)
                 if len(result) >= 100:
                     logger.warning(f"GitHub [{repo_name}] 返回{len(result)}条（达单页上限）")
                 return self._format_commits(result, repo_name)
-            # 请求失败时的重试逻辑
-            err_str = str(result).lower() if result else ""
-            if "rate limit" in err_str or "403" in err_str:
-                if attempt < max_retries - 1:
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (403, 429) and attempt < max_retries - 1:
                     wait = 2 ** (attempt + 1)
                     logger.warning(f"GitHub API 限流，{wait}s 后重试")
                     await asyncio.sleep(wait)
                     continue
-            logger.error(f"GitHub [{repo_name}] 采集失败")
-            return ""
+                logger.error(f"GitHub [{repo_name}] HTTP {e.response.status_code}")
+                return ""
+            except Exception as e:
+                logger.error(f"GitHub [{repo_name}] 采集失败: {e}")
+                return ""
         return ""
 
     def get_crawl_dates(self):

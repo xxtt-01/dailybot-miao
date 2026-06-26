@@ -23,3 +23,11 @@
 - **决策:** 移除 `use_request`/`apis` 依赖，改为直接使用 `httpx.AsyncClient(verify=False)` 调用 commits API，与 `_fetch_all_repos` 保持一致
 - **影响范围:** GitHub/Gitee 爬虫的 `fetch_activities`、`_fetch_all_commits`、`collect_source` 三个方法
 - **踩坑:** `DotDict` 没有 `__call__` 方法，但 `api_method` 也只接受 `payload=None` 单参数，即使加上 `__call__` 也无法兼容关键字参数调用。`use_request` 体系与 `api_register` 的 `api_method` 设计不匹配，爬虫不该走这条链路
+
+## 2026-06-26: 修复 _fetch_commits 异常传播使限流重试可达
+- **文件:**
+  - `crawlers/impl/github_crawler.py`
+  - `crawlers/impl/gitee_crawler.py`
+- **原因:** `_fetch_commits` 内部 try/except 捕获所有异常并返回 `[]`，导致 `collect_source` 中的 `isinstance(result, list)` 始终为 True，限流重试逻辑成为死代码。触发 API 限流时采集无重试直接返回空结果。
+- **决策:** `_fetch_commits` 不再内部捕获异常，改为 `resp.raise_for_status()` 向上传播 HTTP 错误。`fetch_activities` 和 `_fetch_all_commits` 分别 catch 并返回 `[]`/跳过单仓库；`collect_source` catch `httpx.HTTPStatusError` 识别 403/429 并重试。
+- **影响范围:** GitHub/Gitee 爬虫的 `_fetch_commits`、`fetch_activities`、`_fetch_all_commits`、`collect_source`

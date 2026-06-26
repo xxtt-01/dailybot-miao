@@ -34,19 +34,13 @@ class GiteeCrawler(BaseCrawler):
         return config.get("crawler_sources.gitee.token", "")
 
     async def _fetch_commits(self, owner: str, repo: str, params: dict) -> list:
-        """直接使用 httpx 调用 Gitee Commits API（Gitee 使用 access_token 查询参数认证）"""
+        """直接使用 httpx 调用 Gitee Commits API，HTTP 异常向上传播"""
         url = f"{self._api_base_url}/repos/{owner}/{repo}/commits"
-        try:
-            async with httpx.AsyncClient(verify=False) as client:
-                resp = await client.get(url, params=params, timeout=30)
-                if resp.status_code != 200:
-                    logger.error(f"Gitee [{owner}/{repo}] HTTP {resp.status_code}")
-                    return []
-                result = resp.json()
-                return result if isinstance(result, list) else []
-        except Exception as e:
-            logger.error(f"Gitee [{owner}/{repo}] 请求失败: {e}")
-            return []
+        async with httpx.AsyncClient(verify=False) as client:
+            resp = await client.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            result = resp.json()
+            return result if isinstance(result, list) else []
 
     async def _fetch_all_repos(self) -> list:
         """从 Gitee API 自动发现用户的所有仓库"""
@@ -102,12 +96,15 @@ class GiteeCrawler(BaseCrawler):
             params = {"sha": branch, "since": since, "until": until, "per_page": 100}
             if token:
                 params["access_token"] = token
-            result = await self._fetch_commits(owner, repo_name, params)
-            if result:
-                for c in result:
-                    c["_repo_name"] = owner_repo
-                    c["_branch_name"] = branch
-                all_commits.extend(result)
+            try:
+                result = await self._fetch_commits(owner, repo_name, params)
+                if result:
+                    for c in result:
+                        c["_repo_name"] = owner_repo
+                        c["_branch_name"] = branch
+                    all_commits.extend(result)
+            except Exception as e:
+                logger.debug(f"Gitee [{owner_repo}] 跳过: {e}")
         return all_commits
 
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
@@ -124,10 +121,14 @@ class GiteeCrawler(BaseCrawler):
         params = {"sha": branch, "since": query_params.get("since"), "until": query_params.get("until"), "per_page": 100}
         if token:
             params["access_token"] = token
-        result = await self._fetch_commits(owner, repo_name, params)
-        if len(result) >= 100:
-            logger.warning(f"Gitee [{owner_repo}] 返回{len(result)}条（达单页上限）")
-        return result
+        try:
+            result = await self._fetch_commits(owner, repo_name, params)
+            if len(result) >= 100:
+                logger.warning(f"Gitee [{owner_repo}] 返回{len(result)}条（达单页上限）")
+            return result
+        except Exception as e:
+            logger.error(f"Gitee [{owner_repo}] 采集失败: {e}")
+            return []
 
     def extract_activity_data(self, raw_data: dict) -> dict:
         commit = raw_data.get("commit", {})
@@ -148,20 +149,22 @@ class GiteeCrawler(BaseCrawler):
             params["access_token"] = token
         max_retries = 3
         for attempt in range(max_retries):
-            result = await self._fetch_commits(owner, repo, params)
-            if isinstance(result, list):
+            try:
+                result = await self._fetch_commits(owner, repo, params)
                 if len(result) >= 100:
                     logger.warning(f"Gitee [{repo_name}] 返回{len(result)}条（达单页上限）")
                 return self._format_commits(result, repo_name)
-            err_str = str(result).lower() if result else ""
-            if "rate limit" in err_str or "403" in err_str or "429" in err_str:
-                if attempt < max_retries - 1:
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (403, 429) and attempt < max_retries - 1:
                     wait = 2 ** (attempt + 1)
                     logger.warning(f"Gitee API 限流，{wait}s 后重试")
                     await asyncio.sleep(wait)
                     continue
-            logger.error(f"Gitee [{repo_name}] 采集失败，API 返回空结果")
-            return ""
+                logger.error(f"Gitee [{repo_name}] HTTP {e.response.status_code}")
+                return ""
+            except Exception as e:
+                logger.error(f"Gitee [{repo_name}] 采集失败: {e}")
+                return ""
         return ""
 
     def get_crawl_dates(self):

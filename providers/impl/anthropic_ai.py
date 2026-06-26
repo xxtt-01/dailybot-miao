@@ -41,7 +41,10 @@ class AnthropicAI(BaseAIProvider):
                     headers=headers,
                     timeout=kwargs.get("timeout", 120),
                 )
-                result = resp.json()
+            if resp.status_code != 200:
+                logger.error(f"❌ [Anthropic] HTTP {resp.status_code}: {resp.text[:200]}")
+                return f"API Error: HTTP {resp.status_code}"
+            result = resp.json()
             if isinstance(result, dict):
                 content = result.get("content", [])
                 if content and isinstance(content, list):
