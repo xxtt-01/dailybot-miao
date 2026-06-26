@@ -125,7 +125,7 @@ crawler_sources:
     target_user: xxtt-01
     auto_discover: true
   gitee:
-    enabled: false
+    enabled: true
     base_url: https://gitee.com/api/v5
     camouflage:
       enabled: true
@@ -140,6 +140,28 @@ crawler_sources:
       auto_cleanup:
         enabled: true
     token: ''
+    repos:
+    - path: hey-hey-have-you-eaten-yet/ocgt_v2.0.2
+      branch: main
+    - path: hey-hey-have-you-eaten-yet/ocgt-monitor
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/duizhang-wangye-xitong
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/14050
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/daily-bot
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/dewu-bill-system
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/token-monitor
+      branch: main
+    - path: hey-hey-have-you-eaten-yet/e3
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/distafflux
+      branch: master
+    - path: hey-hey-have-you-eaten-yet/claude-setup
+      branch: master
+    target_user: hey-hey-have-you-eaten-yet
   gitlab:
     enabled: false
     camouflage:

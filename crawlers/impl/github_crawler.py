@@ -78,8 +78,7 @@ class GithubCrawler(BaseCrawler):
                 for r in result:
                     full_name = r.get("full_name", "")
                     default_branch = r.get("default_branch", "main")
-                    if not r.get("fork", False):  # 排除 fork 仓库
-                        repos.append({"name": full_name, "path": full_name, "branch": default_branch})
+                    repos.append({"name": full_name, "path": full_name, "branch": default_branch})
                 if len(result) < 100:
                     break
                 page += 1
