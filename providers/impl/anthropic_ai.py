@@ -29,6 +29,10 @@ class AnthropicAI(BaseAIProvider):
         if system_prompt:
             payload["system"] = system_prompt
         headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+        # 支持从配置中读取自定义请求头（用于 ocgt 等代理）
+        custom_headers = config.get("models.anthropic.headers", {})
+        if isinstance(custom_headers, dict):
+            headers.update({k: str(v) for k, v in custom_headers.items()})
         if not api_key:
             logger.warning("⚠️ [Anthropic] API Key 未配置")
         try:

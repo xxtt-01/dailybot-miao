@@ -23,12 +23,18 @@ class GithubCrawler(BaseCrawler):
         return "GitHub"
 
     def get_sources_config(self) -> list:
-        return config.get("crawler_sources", {}).get("github", {}).get("repos", [])
-
-    def get_api_token(self) -> str:
-        return config.get("crawler_sources", {}).get("github", {}).get("token", "")
+        cfg = config.get("crawler_sources", {}).get("github", {})
+        repos = cfg.get("repos", [])
+        # 自动发现模式：仓库列表为空但有 target_user 时，传占位标记
+        if not repos and cfg.get("auto_discover") and cfg.get("target_user"):
+            return [{"path": "__auto_discover__", "branch": "main"}]
+        return repos
 
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
+        # 自动发现模式：先拉取所有仓库，再采集全部 commits
+        if entity_config.get("path") == "__auto_discover__":
+            return await self._fetch_all_commits(query_params)
+
         owner_repo = entity_config.get("path", "")
         branch = entity_config.get("branch", "main")
         if "/" not in owner_repo:
@@ -43,7 +49,9 @@ class GithubCrawler(BaseCrawler):
             headers["Authorization"] = f"Bearer {token}"
         params = {"sha": branch, "since": since, "until": until, "per_page": 100}
         try:
-            result = await self.github_api(owner=owner, repo=repo, params=params, headers=headers, base_url=self._api_base_url)
+            result = await self.github_api(
+                owner=owner, repo=repo, params=params, headers=headers, base_url=self._api_base_url
+            )
             if not result or not isinstance(result, list):
                 return []
             if len(result) >= 100:
@@ -53,10 +61,79 @@ class GithubCrawler(BaseCrawler):
             logger.error(f"GitHub [{owner_repo}] 采集失败: {e}")
             return []
 
+    async def _fetch_all_repos(self) -> list:
+        """从 GitHub API 自动发现用户的所有仓库"""
+        token = self.get_api_token()
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        repos = []
+        page = 1
+        while True:
+            try:
+                result = await self.github_api(
+                    params={"per_page": 100, "page": page, "type": "all", "sort": "pushed"},
+                    headers=headers, base_url=self._api_base_url,
+                )
+                if not result or not isinstance(result, list):
+                    break
+                for r in result:
+                    full_name = r.get("full_name", "")
+                    default_branch = r.get("default_branch", "main")
+                    if not r.get("fork", False):  # 排除 fork 仓库
+                        repos.append({"name": full_name, "path": full_name, "branch": default_branch})
+                if len(result) < 100:
+                    break
+                page += 1
+            except Exception as e:
+                logger.error(f"GitHub 自动发现仓库失败: {e}")
+                break
+        return repos
+
+    async def _fetch_all_commits(self, query_params: dict) -> list:
+        """自动发现模式下：遍历所有仓库采集 commits"""
+        token = self.get_api_token()
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        since, until = query_params.get("since"), query_params.get("until")
+
+        repos = await self._fetch_all_repos()
+        if not repos:
+            return []
+        logger.info(f"GitHub 自动发现 {len(repos)} 个仓库，开始采集...")
+
+        all_commits = []
+        for repo_info in repos:
+            owner_repo = repo_info.get("path", "")
+            branch = repo_info.get("branch", "main")
+            if "/" not in owner_repo:
+                continue
+            owner, repo = owner_repo.split("/", 1)
+            params = {"sha": branch, "since": since, "until": until, "per_page": 100}
+            try:
+                result = await self.github_api(
+                    owner=owner, repo=repo, params=params, headers=headers, base_url=self._api_base_url,
+                )
+                if result and isinstance(result, list):
+                    for c in result:
+                        c["_repo_name"] = owner_repo
+                        c["_branch_name"] = branch
+                    all_commits.extend(result)
+            except Exception as e:
+                logger.debug(f"GitHub [{owner_repo}] 跳过: {e}")
+        return all_commits
+
+    def get_api_token(self) -> str:
+        return config.get("crawler_sources", {}).get("github", {}).get("token", "")
+
     def extract_activity_data(self, raw_data: dict) -> dict:
         commit = raw_data.get("commit", {})
         author = commit.get("author", {})
-        return {"id": raw_data.get("sha", ""), "author_name": author.get("name", ""), "author_email": author.get("email", ""), "content": commit.get("message", "").split("\n")[0], "created_at": author.get("date", ""), "metadata": {"branch": raw_data.get("_branch_name", "main")}}
+        return {
+            "id": raw_data.get("sha", ""),
+            "author_name": author.get("name", ""),
+            "author_email": author.get("email", ""),
+            "content": commit.get("message", "").split("\n")[0],
+            "created_at": author.get("date", ""),
+            "metadata": {"branch": raw_data.get("_branch_name", "main")},
+        }
 
     async def collect_source(self, source: dict) -> str:
         owner_repo = source.get("path", "")
@@ -74,7 +151,9 @@ class GithubCrawler(BaseCrawler):
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                result = await self.github_api(owner=owner, repo=repo, params=params, headers=headers, base_url=self._api_base_url)
+                result = await self.github_api(
+                    owner=owner, repo=repo, params=params, headers=headers, base_url=self._api_base_url,
+                )
                 if isinstance(result, list) and len(result) >= 100:
                     logger.warning(f"GitHub [{repo_name}] 返回{len(result)}条（达单页上限）")
                 return self._format_commits(result, repo_name)

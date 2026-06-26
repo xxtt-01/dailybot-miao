@@ -1,11 +1,11 @@
-version: "1.1.2"
+version: 1.1.2
 platforms:
   feishu:
-    ai_model: ''
+    ai_model: anthropic
     app_id: ''
     app_secret: ''
     bot_token: ''
-    target_chat_id: ''
+    target_chat_id: oc_b8cef320443c2e39ba65e62e58cf8470
     tasklist_guid: ''
     oauth_redirect_uri: http://127.0.0.1:8001/feishu/callback
     standup_time: 09:00
@@ -82,11 +82,14 @@ models:
     params:
       timeout: 120
   anthropic:
-    name: Anthropic Claude
+    name: OpenCode Go (ocgt)
     api_key: ''
-    base_url: https://api.anthropic.com
+    base_url: http://127.0.0.1:8787
     models:
-    - claude-sonnet-4-20250514
+    - deepseek-v4-flash
+    headers:
+      X-Ocgt-Profile: opencode-go
+      X-Ocgt-Client: dailybot
     params:
       timeout: 120
 crawler_sources:
@@ -105,9 +108,24 @@ crawler_sources:
       retention: 7
       auto_cleanup:
         enabled: true
-    repos: []
+    repos:
+    - path: xxtt-01/dailybot-miao
+      branch: main
+    - path: xxtt-01/open-code-go-tools
+      branch: main
+    - path: xxtt-01/ocgt-monitor
+      branch: master
+    - path: xxtt-01/token-monitor
+      branch: main
+    - path: xxtt-01/MiMo-Code
+      branch: main
+    - path: xxtt-01/vue-video-editor
+      branch: main
+    token: ''
+    target_user: xxtt-01
+    auto_discover: true
   gitee:
-    enabled: true
+    enabled: false
     base_url: https://gitee.com/api/v5
     camouflage:
       enabled: true
@@ -121,8 +139,9 @@ crawler_sources:
       retention: 7
       auto_cleanup:
         enabled: true
+    token: ''
   gitlab:
-    enabled: true
+    enabled: false
     camouflage:
       enabled: true
       threshold: 4
@@ -136,7 +155,7 @@ crawler_sources:
       auto_cleanup:
         enabled: true
 enabled_workflows:
-- wecom
+- feishu
 scheduler:
   enabled: true
   auto_start: true
