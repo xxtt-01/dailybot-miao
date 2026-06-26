@@ -26,7 +26,8 @@ class PlatformFactory:
             return None
 
         base_url = model_cfg.get("base_url")
-        api_key = model_cfg.get("api_key")
+        # 使用完整路径读取 api_key，确保触发环境变量覆盖
+        api_key = config.get(f"models.{platform_name}.api_key", "")
 
         if not base_url:
             logger.debug(
