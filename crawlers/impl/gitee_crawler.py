@@ -37,15 +37,17 @@ class GiteeCrawler(BaseCrawler):
         token = self.get_api_token()
         repos = []
         page = 1
+        max_pages = 10  # 安全上限：最多 1000 个仓库
         async with httpx.AsyncClient() as client:
-            while True:
+            while page <= max_pages:
                 try:
-                    params = {"per_page": 100, "page": page, "type": "all", "sort": "updated"}
+                    params = {"per_page": 100, "page": page, "sort": "updated"}
+                    headers = {}
                     if token:
-                        params["access_token"] = token
+                        headers["Authorization"] = f"Bearer {token}"
                     resp = await client.get(
                         f"{self._api_base_url}/user/repos",
-                        params=params, timeout=30,
+                        params=params, headers=headers, timeout=30,
                     )
                     if resp.status_code != 200:
                         logger.error(f"Gitee 获取仓库列表失败: HTTP {resp.status_code}")

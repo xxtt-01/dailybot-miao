@@ -66,8 +66,9 @@ class GithubCrawler(BaseCrawler):
         token = self.get_api_token()
         repos = []
         page = 1
+        max_pages = 10  # 安全上限：最多 1000 个仓库
         async with httpx.AsyncClient() as client:
-            while True:
+            while page <= max_pages:
                 try:
                     headers = {"Authorization": f"Bearer {token}"} if token else {}
                     resp = await client.get(
