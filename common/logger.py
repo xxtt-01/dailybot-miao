@@ -19,6 +19,14 @@ else:
 log_rotation = log_cfg.get("rotation", "00:00")
 log_retention = log_cfg.get("retention", "7 days")
 
+# 修复 Windows 终端编码问题（GBK 不支持 emoji）
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # 移除 loguru 默认的 stderr handler
 logger.remove()
 

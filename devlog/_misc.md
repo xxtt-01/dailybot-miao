@@ -12,3 +12,10 @@
 - **文件:**
   - `使用说明.html`
 - **原因:** 新增 FAQ 条目介绍 Web 管理面板的访问方式
+
+## 2026-06-26: 修复 dailybot_scheduler 日志格式
+- **文件:**
+  - `dailybot_scheduler.py`
+- **原因:** `setup_logging()` 返回标准 logging.Logger，但日志调用用了 loguru 的 `{}` 格式化语法，导致 TypeError
+- **决策:** 将 `log.info("...{}...", arg)` 改为 `log.info("...%s...", arg)` 和 `log.info("...%d...", arg)`，兼容标准 logging
+- **影响范围:** run.py 和定时任务触发的日志输出

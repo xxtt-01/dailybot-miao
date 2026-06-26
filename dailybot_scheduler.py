@@ -388,7 +388,7 @@ def sync_tasks(scheduler_config, log):
     default_time = scheduler_config.get("default_time", "18:00")
     tasks = scheduler_config.get("tasks") or []
 
-    log.info("📋 [调度] 配置文件中定义了 {} 个定时任务", len(tasks))
+    log.info("📋 [调度] 配置文件中定义了 %d 个定时任务", len(tasks))
     exe_path = get_exe_path()
 
     if not enabled:
@@ -447,7 +447,7 @@ def execute_trigger(log, strict: bool = False):
 
     try:
         with lock:
-            log.info("🚀 [触发] 定时任务触发 (strict={})，开始执行核心业务逻辑...", strict)
+            log.info("🚀 [触发] 定时任务触发 (strict=%s)，开始执行核心业务逻辑...", strict)
             from main import main
 
             asyncio.run(main(strict=strict))
