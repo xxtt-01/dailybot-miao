@@ -34,7 +34,7 @@ class GiteeCrawler(BaseCrawler):
         return cfg.get("repos", [])
 
     def get_api_token(self) -> str:
-        return config.get("crawler_sources", {}).get("gitee", {}).get("token", "")
+        return config.get("crawler_sources.gitee.token", "")
 
     async def _fetch_all_repos(self) -> list:
         """从 Gitee API 自动发现用户的所有仓库"""

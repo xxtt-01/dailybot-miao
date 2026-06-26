@@ -132,7 +132,7 @@ class GithubCrawler(BaseCrawler):
         return all_commits
 
     def get_api_token(self) -> str:
-        return config.get("crawler_sources", {}).get("github", {}).get("token", "")
+        return config.get("crawler_sources.github.token", "")
 
     def extract_activity_data(self, raw_data: dict) -> dict:
         commit = raw_data.get("commit", {})
