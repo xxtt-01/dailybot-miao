@@ -23,12 +23,74 @@ class GiteeCrawler(BaseCrawler):
         return "Gitee"
 
     def get_sources_config(self) -> list:
-        return config.get("crawler_sources", {}).get("gitee", {}).get("repos", [])
+        cfg = config.get("crawler_sources", {}).get("gitee", {})
+        if cfg.get("auto_discover") and cfg.get("target_user"):
+            return [{"path": "__auto_discover__", "branch": "main"}]
+        return cfg.get("repos", [])
 
     def get_api_token(self) -> str:
         return config.get("crawler_sources", {}).get("gitee", {}).get("token", "")
 
+    async def _fetch_all_repos(self) -> list:
+        """从 Gitee API 自动发现用户的所有仓库"""
+        token = self.get_api_token()
+        repos = []
+        page = 1
+        while True:
+            try:
+                params = {"per_page": 100, "page": page, "type": "all", "sort": "updated"}
+                if token:
+                    params["access_token"] = token
+                result = await self.gitee_api(base_url=self._api_base_url, params=params)
+                if not result or not isinstance(result, list):
+                    break
+                for r in result:
+                    full_name = r.get("full_name", "")
+                    default_branch = r.get("default_branch", "main")
+                    repos.append({"name": full_name, "path": full_name, "branch": default_branch})
+                if len(result) < 100:
+                    break
+                page += 1
+            except Exception as e:
+                logger.error(f"Gitee 自动发现仓库失败: {e}")
+                break
+        return repos
+
+    async def _fetch_all_commits(self, query_params: dict) -> list:
+        """自动发现模式下：遍历所有仓库采集 commits"""
+        token = self.get_api_token()
+        since, until = query_params.get("since"), query_params.get("until")
+
+        repos = await self._fetch_all_repos()
+        if not repos:
+            return []
+        logger.info(f"Gitee 自动发现 {len(repos)} 个仓库，开始采集...")
+
+        all_commits = []
+        for repo_info in repos:
+            owner_repo = repo_info.get("path", "")
+            branch = repo_info.get("branch", "main")
+            if "/" not in owner_repo:
+                continue
+            owner, repo = owner_repo.split("/", 1)
+            params = {"sha": branch, "since": since, "until": until, "per_page": 100}
+            if token:
+                params["access_token"] = token
+            try:
+                result = await self.gitee_api(owner=owner, repo=repo, params=params, base_url=self._api_base_url)
+                if result and isinstance(result, list):
+                    for c in result:
+                        c["_repo_name"] = owner_repo
+                        c["_branch_name"] = branch
+                    all_commits.extend(result)
+            except Exception as e:
+                logger.debug(f"Gitee [{owner_repo}] 跳过: {e}")
+        return all_commits
+
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
+        if entity_config.get("path") == "__auto_discover__":
+            return await self._fetch_all_commits(query_params)
+
         owner_repo = entity_config.get("path", "")
         branch = entity_config.get("branch", "main")
         if "/" not in owner_repo:

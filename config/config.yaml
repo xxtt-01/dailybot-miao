@@ -108,19 +108,7 @@ crawler_sources:
       retention: 7
       auto_cleanup:
         enabled: true
-    repos:
-    - path: xxtt-01/dailybot-miao
-      branch: main
-    - path: xxtt-01/open-code-go-tools
-      branch: main
-    - path: xxtt-01/ocgt-monitor
-      branch: master
-    - path: xxtt-01/token-monitor
-      branch: main
-    - path: xxtt-01/MiMo-Code
-      branch: main
-    - path: xxtt-01/vue-video-editor
-      branch: main
+    repos: []
     token: ''
     target_user: xxtt-01
     auto_discover: true
@@ -140,28 +128,9 @@ crawler_sources:
       auto_cleanup:
         enabled: true
     token: ''
-    repos:
-    - path: hey-hey-have-you-eaten-yet/ocgt_v2.0.2
-      branch: main
-    - path: hey-hey-have-you-eaten-yet/ocgt-monitor
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/duizhang-wangye-xitong
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/14050
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/daily-bot
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/dewu-bill-system
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/token-monitor
-      branch: main
-    - path: hey-hey-have-you-eaten-yet/e3
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/distafflux
-      branch: master
-    - path: hey-hey-have-you-eaten-yet/claude-setup
-      branch: master
+    repos: []
     target_user: hey-hey-have-you-eaten-yet
+    auto_discover: true
   gitlab:
     enabled: false
     camouflage:

@@ -24,11 +24,10 @@ class GithubCrawler(BaseCrawler):
 
     def get_sources_config(self) -> list:
         cfg = config.get("crawler_sources", {}).get("github", {})
-        repos = cfg.get("repos", [])
-        # 自动发现模式：仓库列表为空但有 target_user 时，传占位标记
-        if not repos and cfg.get("auto_discover") and cfg.get("target_user"):
+        # 自动发现模式：只要 auto_discover=true，就动态拉取仓库列表
+        if cfg.get("auto_discover") and cfg.get("target_user"):
             return [{"path": "__auto_discover__", "branch": "main"}]
-        return repos
+        return cfg.get("repos", [])
 
     async def fetch_activities(self, entity_config: dict, query_params: dict) -> list:
         # 自动发现模式：先拉取所有仓库，再采集全部 commits
