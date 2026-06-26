@@ -1,7 +1,6 @@
+import httpx
 from loguru import logger
-from api import apis
 from common.config import config
-from request.hooks.use_request import use_request
 from ..modules.base_ai import BaseAIProvider
 
 
@@ -10,7 +9,6 @@ class OllamaAI(BaseAIProvider):
 
     def __init__(self):
         super().__init__()
-        self.api = use_request(apis.ai_ollama.chat)
 
     def get_model_name(self):
         provider_cfg = config.get("models", {}).get("ollama", {})
@@ -29,7 +27,13 @@ class OllamaAI(BaseAIProvider):
         payload = {"model": model, "messages": messages, "temperature": kwargs.get("temperature", 0.7), "max_tokens": kwargs.get("max_tokens", 4096), "stream": False}
         try:
             logger.info(f"[Ollama] 请求 {model}...")
-            result = await self.api(base_url=base_url, json=payload, timeout=kwargs.get("timeout", 120))
+            async with httpx.AsyncClient(verify=False) as client:
+                resp = await client.post(
+                    f"{base_url}/v1/chat/completions",
+                    json=payload,
+                    timeout=kwargs.get("timeout", 120),
+                )
+                result = resp.json()
             if isinstance(result, dict):
                 choices = result.get("choices", [])
                 if choices:

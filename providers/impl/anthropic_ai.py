@@ -1,8 +1,7 @@
 """Anthropic Claude AI 供应商"""
+import httpx
 from loguru import logger
-from api import apis
 from common.config import config
-from request.hooks.use_request import use_request
 from ..modules.base_ai import BaseAIProvider
 
 
@@ -11,7 +10,6 @@ class AnthropicAI(BaseAIProvider):
 
     def __init__(self):
         super().__init__()
-        self.api = use_request(apis.ai_anthropic.messages)
 
     def get_model_name(self):
         provider_cfg = config.get("models", {}).get("anthropic", {})
@@ -29,7 +27,6 @@ class AnthropicAI(BaseAIProvider):
         if system_prompt:
             payload["system"] = system_prompt
         headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
-        # 支持从配置中读取自定义请求头（用于 ocgt 等代理）
         custom_headers = config.get("models.anthropic.headers", {})
         if isinstance(custom_headers, dict):
             headers.update({k: str(v) for k, v in custom_headers.items()})
@@ -37,7 +34,14 @@ class AnthropicAI(BaseAIProvider):
             logger.warning("⚠️ [Anthropic] API Key 未配置")
         try:
             logger.info(f"🤖 [Anthropic] 请求 {model}...")
-            result = await self.api(base_url=base_url, json=payload, headers=headers, timeout=kwargs.get("timeout", 120))
+            async with httpx.AsyncClient(verify=False) as client:
+                resp = await client.post(
+                    f"{base_url}/messages",
+                    json=payload,
+                    headers=headers,
+                    timeout=kwargs.get("timeout", 120),
+                )
+                result = resp.json()
             if isinstance(result, dict):
                 content = result.get("content", [])
                 if content and isinstance(content, list):
