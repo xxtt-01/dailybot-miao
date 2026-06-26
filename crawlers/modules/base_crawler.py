@@ -213,10 +213,10 @@ class BaseCrawler(ABC):
                         if self.should_skip_activity(activity_data):
                             continue
 
-                        # 用户过滤逻辑
+                        # 用户过滤逻辑（auto_discover 模式所有仓库归自己，跳过过滤）
                         author_name = activity_data.get("author_name", "")
                         author_email = activity_data.get("author_email", "")
-                        if target_user:
+                        if target_user and entity.get("path") != "__auto_discover__":
                             u_f = target_user.lower()
                             if (
                                 u_f not in author_name.lower()

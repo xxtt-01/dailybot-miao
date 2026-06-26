@@ -39,3 +39,11 @@
 - **原因:** Gitee API 可能返回非列表响应（如错误消息字典），此前被 `_fetch_commits` 的 `isinstance` 检查静默转为 `[]`，调用方完全不知情。同时 `_fetch_all_commits` 中每个仓库的异常日志为 DEBUG 级别，默认日志不显示。
 - **决策:** 将 `_fetch_all_commits` 中 per-repo 异常日志从 `logger.debug` 提升为 `logger.warning`；`_fetch_commits` 在 API 返回非列表时输出警告日志。
 - **影响范围:** 运行日志可见性
+
+## 2026-06-26: auto_discover 模式跳过 target_user 过滤
+- **文件:**
+  - `crawlers/modules/base_crawler.py`
+- **原因:** Gitee 的 commit author 是 GitHub 用户名 `xxtt-01`，但 `target_user` 配置为 Gitee 用户名 `hey-hey-have-you-eaten-yet`。`crawl_entity` 第 219-225 行的 author 过滤将所有 Gitee commit 滤掉，导致 Gitee 始终 0 条。
+- **决策:** auto_discover 模式下（`entity.path == "__auto_discover__"`）跳过 target_user 过滤，因为所有仓库归用户自己所有，无需按作者筛选。
+- **影响范围:** Gitee/GitHub auto_discover 采集不再被 target_user 误过滤
+- **踩坑:** 同一用户的 GitHub 和 Gitee 可能使用不同用户名/邮箱，固定字符串匹配不够灵活
