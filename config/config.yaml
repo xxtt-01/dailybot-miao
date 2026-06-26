@@ -1,7 +1,7 @@
 version: 1.1.2
 platforms:
   feishu:
-    ai_model: anthropic
+    ai_model: openai
     app_id: cli_a961b4bda2ba1bd6
     app_secret: ''
     bot_token: ''
@@ -66,13 +66,13 @@ models:
     params:
       timeout: 60
   openai:
-    name: OpenAI Codex
+    name: OpenCode AI
     api_key: ''
-    base_url: ''
-    models: []
+    base_url: https://opencode.ai/zen/go/v1
+    models:
+    - deepseek-v4-flash
     params:
-      timeout: 60
-      reasoning_effort: high
+      timeout: 120
   ollama:
     name: Ollama 本地模型
     api_key: ''
