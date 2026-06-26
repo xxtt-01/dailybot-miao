@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from loguru import logger
 
 from api import apis
@@ -61,29 +62,36 @@ class GithubCrawler(BaseCrawler):
             return []
 
     async def _fetch_all_repos(self) -> list:
-        """从 GitHub API 自动发现用户的所有仓库"""
+        """从 GitHub API 自动发现用户的所有仓库（使用 /user/repos 端点）"""
         token = self.get_api_token()
-        headers = {"Authorization": f"Bearer {token}"} if token else {}
         repos = []
         page = 1
-        while True:
-            try:
-                result = await self.github_api(
-                    params={"per_page": 100, "page": page, "type": "all", "sort": "pushed"},
-                    headers=headers, base_url=self._api_base_url,
-                )
-                if not result or not isinstance(result, list):
+        async with httpx.AsyncClient() as client:
+            while True:
+                try:
+                    headers = {"Authorization": f"Bearer {token}"} if token else {}
+                    resp = await client.get(
+                        f"{self._api_base_url}/user/repos",
+                        params={"per_page": 100, "page": page, "type": "all", "sort": "pushed"},
+                        headers=headers, timeout=30,
+                    )
+                    if resp.status_code != 200:
+                        logger.error(f"GitHub 获取仓库列表失败: HTTP {resp.status_code}")
+                        break
+                    page_repos = resp.json()
+                    if not isinstance(page_repos, list) or not page_repos:
+                        break
+                    for r in page_repos:
+                        full_name = r.get("full_name", "")
+                        default_branch = r.get("default_branch", "main")
+                        repos.append({"name": full_name, "path": full_name, "branch": default_branch})
+                    if len(page_repos) < 100:
+                        break
+                    page += 1
+                except Exception as e:
+                    logger.error(f"GitHub 自动发现仓库失败: {e}")
                     break
-                for r in result:
-                    full_name = r.get("full_name", "")
-                    default_branch = r.get("default_branch", "main")
-                    repos.append({"name": full_name, "path": full_name, "branch": default_branch})
-                if len(result) < 100:
-                    break
-                page += 1
-            except Exception as e:
-                logger.error(f"GitHub 自动发现仓库失败: {e}")
-                break
+        logger.info(f"GitHub 自动发现 {len(repos)} 个仓库")
         return repos
 
     async def _fetch_all_commits(self, query_params: dict) -> list:

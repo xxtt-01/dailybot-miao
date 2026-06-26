@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from loguru import logger
 
 from api import apis
@@ -36,24 +37,32 @@ class GiteeCrawler(BaseCrawler):
         token = self.get_api_token()
         repos = []
         page = 1
-        while True:
-            try:
-                params = {"per_page": 100, "page": page, "type": "all", "sort": "updated"}
-                if token:
-                    params["access_token"] = token
-                result = await self.gitee_api(base_url=self._api_base_url, params=params)
-                if not result or not isinstance(result, list):
+        async with httpx.AsyncClient() as client:
+            while True:
+                try:
+                    params = {"per_page": 100, "page": page, "type": "all", "sort": "updated"}
+                    if token:
+                        params["access_token"] = token
+                    resp = await client.get(
+                        f"{self._api_base_url}/user/repos",
+                        params=params, timeout=30,
+                    )
+                    if resp.status_code != 200:
+                        logger.error(f"Gitee 获取仓库列表失败: HTTP {resp.status_code}")
+                        break
+                    page_repos = resp.json()
+                    if not isinstance(page_repos, list) or not page_repos:
+                        break
+                    for r in page_repos:
+                        full_name = r.get("full_name", "")
+                        default_branch = r.get("default_branch", "main")
+                        repos.append({"name": full_name, "path": full_name, "branch": default_branch})
+                    if len(page_repos) < 100:
+                        break
+                    page += 1
+                except Exception as e:
+                    logger.error(f"Gitee 自动发现仓库失败: {e}")
                     break
-                for r in result:
-                    full_name = r.get("full_name", "")
-                    default_branch = r.get("default_branch", "main")
-                    repos.append({"name": full_name, "path": full_name, "branch": default_branch})
-                if len(result) < 100:
-                    break
-                page += 1
-            except Exception as e:
-                logger.error(f"Gitee 自动发现仓库失败: {e}")
-                break
         return repos
 
     async def _fetch_all_commits(self, query_params: dict) -> list:
