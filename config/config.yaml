@@ -2,7 +2,7 @@ version: 1.1.2
 platforms:
   feishu:
     ai_model: anthropic
-    app_id: ''
+    app_id: cli_a961b4bda2ba1bd6
     app_secret: ''
     bot_token: ''
     target_chat_id: oc_b8cef320443c2e39ba65e62e58cf8470
