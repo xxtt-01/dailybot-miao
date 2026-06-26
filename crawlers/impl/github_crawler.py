@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -8,6 +9,9 @@ from api import apis
 from common.config import config
 from crawlers.modules.base_crawler import BaseCrawler
 from request.hooks.use_request import use_request
+
+# 关闭 httpx SSL 警告（企业代理环境）
+warnings.filterwarnings("ignore", message=".*verify.*", category=UserWarning, module="httpx")
 
 _TZ = timezone(timedelta(hours=8))
 
@@ -67,7 +71,7 @@ class GithubCrawler(BaseCrawler):
         repos = []
         page = 1
         max_pages = 10  # 安全上限：最多 1000 个仓库
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:
             while page <= max_pages:
                 try:
                     headers = {"Authorization": f"Bearer {token}"} if token else {}

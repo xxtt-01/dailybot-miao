@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -8,6 +9,9 @@ from api import apis
 from common.config import config
 from crawlers.modules.base_crawler import BaseCrawler
 from request.hooks.use_request import use_request
+
+# 关闭 httpx SSL 警告（企业代理环境）
+warnings.filterwarnings("ignore", message=".*verify.*", category=UserWarning, module="httpx")
 
 _TZ = timezone(timedelta(hours=8))
 
@@ -38,16 +42,15 @@ class GiteeCrawler(BaseCrawler):
         repos = []
         page = 1
         max_pages = 10  # 安全上限：最多 1000 个仓库
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:
             while page <= max_pages:
                 try:
                     params = {"per_page": 100, "page": page, "sort": "updated"}
-                    headers = {}
                     if token:
-                        headers["Authorization"] = f"Bearer {token}"
+                        params["access_token"] = token
                     resp = await client.get(
                         f"{self._api_base_url}/user/repos",
-                        params=params, headers=headers, timeout=30,
+                        params=params, timeout=30,
                     )
                     if resp.status_code != 200:
                         logger.error(f"Gitee 获取仓库列表失败: HTTP {resp.status_code}")

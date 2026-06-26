@@ -28,8 +28,9 @@ def validate_config(config_obj) -> List[Tuple[str, str]]:
         if source_config.get("enabled", False):
             has_enabled_source = True
             repos = source_config.get("repos", [])
+            has_auto_discover = source_config.get("auto_discover", False) and source_config.get("target_user")
             valid_repos = [r for r in repos if r.get("path")]
-            if not valid_repos:
+            if not valid_repos and not has_auto_discover:
                 errors.append((f"crawler_sources.{source_name}.repos", f"{source_name} 已启用但无有效仓库"))
             base_url = source_config.get("base_url", "")
             if base_url and not base_url.startswith(("http://", "https://")):
