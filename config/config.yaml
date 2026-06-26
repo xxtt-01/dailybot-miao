@@ -1,161 +1,165 @@
-version: "1.0.0"
-
-# 平台配置
+version: "1.1.2"
 platforms:
-  # 飞书
   feishu:
-    ai_model: ""
-    app_id: ""
-    app_secret: ""
-    bot_token: ""
-    target_chat_id: ""
-    tasklist_guid: ""
-    oauth_redirect_uri: "http://127.0.0.1:8001/feishu/callback" # 这里的8001端口需要和下面的保持一致
-    standup_time: "09:00"
-    standup_timezone: "Asia/Shanghai"
-    base_url: "https://open.feishu.cn"
-    # OAuth FastAPI 回调服务器配置（可不用配置）
+    ai_model: ''
+    app_id: ''
+    app_secret: ''
+    bot_token: ''
+    target_chat_id: ''
+    tasklist_guid: ''
+    oauth_redirect_uri: http://127.0.0.1:8001/feishu/callback
+    standup_time: 09:00
+    standup_timezone: Asia/Shanghai
+    base_url: https://open.feishu.cn
     oauth:
-      host: "0.0.0.0"
+      host: 0.0.0.0
       port: 8001
-  # 企业微信
   wecom:
-    ai_model: ""
-    corp_id: ""
-    corp_secret: ""
-    # 自动化配置
+    ai_model: ''
+    corp_id: ''
+    corp_secret: ''
     rpa:
       enabled: true
-      speed: 0.4 # 自动化填写速度倍率: 0.1 (最快) - 1 (最慢 - 模拟真人)。非法值将默认为 1
-      max_retry: 1 # 页面加载错误时的最大刷新重试次数 (0-N)
-      auto_submit: false # 是否自动提交
-      auto_cleanup: true # 是否自动检测并删除缺陷行
-      browser_type: "chrome" # 浏览器类型: "chrome" 或 "msedge"
-      # 企业微信邀请填写日报的 URL
-      form_url: ""
-      # 浏览器类型: "chrome" 或 "msedge"
-      browser_user_data_dir: "" # 为空时默认保存到当前项目根目录下的 .browser_profiles/指定浏览器类型 文件夹；如果有需求也可以填写绝对路径, 例如 "C:\\Users\\Default\\AppData\\Local\\Google\\Chrome\\User Data"
-      browser_executable_path: "" # 浏览器的绝对路径，如果你用 edge，通常是 "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"，留空则尝试使用 playwright 下载的内核
-
-# AI 模型配置
+      speed: 0.4
+      max_retry: 1
+      auto_submit: false
+      auto_cleanup: true
+      browser_type: chrome
+      form_url: ''
+      browser_user_data_dir: ''
+      browser_executable_path: ''
 models:
   doubao:
-    name: "豆包大模型"
-    api_key: ""
-    base_url: ""
+    name: 豆包大模型
+    api_key: ''
+    base_url: ''
     models: []
-    use_global_camouflage: true # 是否使用全局伪装提示词（默认false）
+    use_global_camouflage: true
     params:
-      timeout: 60 # 设定1小时超时
+      timeout: 60
   glm:
-    name: "智谱清言大模型"
-    api_key: ""
-    base_url: ""
+    name: 智谱清言大模型
+    api_key: ''
+    base_url: ''
     models: []
     params:
       timeout: 60
   deepseek:
-    name: "DeepSeek V3"
-    api_key: ""
-    base_url: ""
+    name: DeepSeek V3
+    api_key: ''
+    base_url: ''
     models: []
     params:
       timeout: 60
   kimi:
-    name: "Kimi K2"
-    api_key: ""
-    base_url: ""
+    name: Kimi K2
+    api_key: ''
+    base_url: ''
     models: []
     params:
       timeout: 60
   gemini:
-    name: "Gemini 3 Flash Preview"
-    api_key: ""
-    base_url: ""
+    name: Gemini 3 Flash Preview
+    api_key: ''
+    base_url: ''
     models: []
     params:
       timeout: 60
   openai:
-    name: "OpenAI Codex"
-    api_key: ""
-    base_url: ""
+    name: OpenAI Codex
+    api_key: ''
+    base_url: ''
     models: []
     params:
       timeout: 60
-      reasoning_effort: "high"
-
-# 抓取平台与采集源配置
+      reasoning_effort: high
+  ollama:
+    name: Ollama 本地模型
+    api_key: ''
+    base_url: http://localhost:11434
+    models:
+    - qwen2.5:7b
+    params:
+      timeout: 120
+  anthropic:
+    name: Anthropic Claude
+    api_key: ''
+    base_url: https://api.anthropic.com
+    models:
+    - claude-sonnet-4-20250514
+    params:
+      timeout: 120
 crawler_sources:
-  gitlab:
+  github:
     enabled: true
-    token: ""
-    base_url: ""
-    target_user: ""
-    repos:
-      - path: ""
-        branch: ""
-        name: ""
-      - path: ""
-        branch: ""
-        name: ""
-        # 爬取日期配置（不传则默认爬取当天）
-        # 支持单个日期或日期区间，每个元素以逗号分隔起止日期
-        # crawl_dates:
-        #   - "2025-12-31"
-        # - "2026-01-04, 2026-01-05"
-      - path: ""
-        branch: ""
-        name: ""
-    # 伪装配置
+    base_url: https://api.github.com
     camouflage:
-      enabled: true # 是否启用
-      threshold: 4 # 执行阈值：当日该平台总提交数少于此值时触发
-      max_items: 5 # 目标总条数：触发后，伪装记录数 = max_items - 真实采集数 + 人工补充
-      lookback_days: 14 # 回溯天数：寻找素材的范围
-      cooldown_days: 10 # LRU 冷却天数：素材使用后的禁止期 (天)
-    # 额外信息补充（人工补充）
+      enabled: true
+      threshold: 4
+      max_items: 5
+      lookback_days: 14
+      cooldown_days: 10
     extra_report:
       enabled: true
-      # 文件路径，支持绝对路径和相对路径（相对于项目根目录）
-      file_path: "extra_report.md"
-      # 日志保留天数
+      file_path: extra_report.md
       retention: 7
-      # 自动清理配置（采集完成后是否自动清空源文件）
       auto_cleanup:
-        enabled: true # 采集完成后自动清空源文件
-        # 定时清理时间（与日报采集时间不同时使用定时清理）
-        # cleanup_time: "24:00"
-
-# 启用的工作流，名称要和 platforms 中的 key 对应
-enabled_workflows: ["wecom"]
-
-# 调度器配置 (Windows 本地定时触发配置)
+        enabled: true
+    repos: []
+  gitee:
+    enabled: true
+    base_url: https://gitee.com/api/v5
+    camouflage:
+      enabled: true
+      threshold: 4
+      max_items: 5
+      lookback_days: 14
+      cooldown_days: 10
+    extra_report:
+      enabled: true
+      file_path: extra_report.md
+      retention: 7
+      auto_cleanup:
+        enabled: true
+  gitlab:
+    enabled: true
+    camouflage:
+      enabled: true
+      threshold: 4
+      max_items: 5
+      lookback_days: 14
+      cooldown_days: 10
+    extra_report:
+      enabled: true
+      file_path: extra_report.md
+      retention: 7
+      auto_cleanup:
+        enabled: true
+enabled_workflows:
+- wecom
 scheduler:
   enabled: true
-  auto_start: true # 开机自启用
-  auto_path: true # 自动将程序路径添加到系统 PATH (方便全局执行命令)，默认关闭
-  # 兜底执行时间 (如果今日不符合任何 tasks 规则，或配置全过期)
-  default_time: "18:20"
-  tasks: # 指定特定时间运行
-    - # 示例：二月工作日 18:20 运行
-      time: "18:20"
-      weekdays: [1, 2, 3, 4, 5] # 双休
-  #   - # 示例：特定日期特定时间
-  #     dates: ["2026-02-27"]
-  #     time: "20:00"
-  #     weekdays: [1, 2, 3, 4, 5, 6, 7] # 单休
-
-# 日志配置
+  auto_start: true
+  auto_path: true
+  default_time: '18:20'
+  tasks:
+  - time: '18:20'
+    weekdays:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
 log:
-  level: "INFO" # 控制台输出级别
-  file_level: "DEBUG" # 文件保存级别
-  rotation: "00:00" # 日志轮转时间 (每天零点)
-  retention: "7 days" # 日志保留时间
-  path: "logs/dailybot_{time:YYYY-MM-DD}.log" # 日志路径模板
-
-# Redis Token 存储配置
+  level: INFO
+  file_level: DEBUG
+  rotation: 00:00
+  retention: 7 days
+  path: logs/dailybot_{time:YYYY-MM-DD}.log
+admin:
+  api_key: dailybot-admin
 redis:
   host: 127.0.0.1
   port: 6379
-  password: ""
+  password: ''
   database: 0
