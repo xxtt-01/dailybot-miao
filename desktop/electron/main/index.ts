@@ -282,6 +282,36 @@ ipcMain.handle('show-notification', (_event, title: string, body: string) => {
   new Notification({ title, body }).show()
 })
 
+// ── 后端进程看守（看门狗） ──────────────────────────
+
+let watchdogTimer: ReturnType<typeof setInterval> | null = null
+
+function startWatchdog() {
+  watchdogTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:${PYTHON_PORT}/health`)
+      if (!res.ok && !pythonProcess) {
+        console.warn('[看门狗] 后端无响应且进程已退出，尝试重启...')
+        await startPythonBackend()
+        new Notification({ title: 'DailyBot', body: '后端服务已自动重启' }).show()
+      }
+    } catch {
+      if (!pythonProcess) {
+        console.warn('[看门狗] 后端连接失败且进程已退出，尝试重启...')
+        await startPythonBackend()
+        new Notification({ title: 'DailyBot', body: '后端服务已自动重启' }).show()
+      }
+    }
+  }, 30000)
+}
+
+function stopWatchdog() {
+  if (watchdogTimer) {
+    clearInterval(watchdogTimer)
+    watchdogTimer = null
+  }
+}
+
 // ── 应用生命周期 ──
 
 app.whenReady().then(async () => {
@@ -291,6 +321,7 @@ app.whenReady().then(async () => {
     createTray(win)
     registerGlobalShortcuts(win)
   }
+  startWatchdog()
 })
 
 app.on('window-all-closed', () => {
@@ -298,6 +329,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  stopWatchdog()
   globalShortcut.unregisterAll()
   (app as any).isQuitting = true
   stopPythonBackend()
