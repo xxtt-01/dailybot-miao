@@ -142,6 +142,38 @@
   - 冗余导入：Stats.vue 的 `computed` 导入了但未使用
 - **影响范围:** 前端 3 文件 + Electron 主进程 1 文件
 
+## 2026-06-28: Sprint 4 — 实时日志流 + 快捷键帮助弹窗
+- **文件:**
+  - `desktop/src/views/Logs.vue`
+  - `desktop/src/App.vue`
+- **决策:**
+  - Logs 页增加"实时/历史"切换，实时模式通过 fetch+ReadableStream 连接 SSE，自动滚动到底部
+  - 快捷键帮助：按 `?` 弹出快捷操作指南弹窗，侧边栏提示改为 `? 帮助`
+- **影响范围:** 前端 2 文件
+
+## 2026-06-28: Sprint 5 — 日报编辑推送工作流
+- **文件:**
+  - `common/database.py`
+  - `core/engine.py`
+  - `web/routes.py`
+  - `desktop/src/api/client.ts`
+  - `desktop/src/views/Reports.vue`
+- **决策:**
+  - 数据库：`daily_reports` 表新增 `pushed` 字段（默认 0），幂等迁移旧表
+  - 引擎：增加 `auto_push` 配置（默认 true），设为 false 时只存草稿不推送飞书
+  - API：新增 `GET /reports/drafts`（草稿列表）、`PUT /reports/{id}`（编辑摘要）、`POST /reports/{id}/push`（手动推送）
+  - 前端：Reports 页增加"历史/待推送"视图切换，草稿卡片显示编辑/推送按钮，编辑器弹窗支持修改后保存
+- **影响范围:** 后端 3 文件 + 前端 2 文件
+
+## 2026-06-28: Sprint 6 — 首次运行引导
+- **文件:**
+  - `desktop/src/App.vue`
+  - `desktop/src/views/Dashboard.vue`
+- **决策:**
+  - Dashboard 配置警告改为可点击，点击自动跳转到对应配置页（采集源/配置）
+  - 使用 `onNavigate` 回调 prop 实现子→父页面导航
+- **影响范围:** 前端 2 文件
+
 ## 2026-06-27: Sprint 3 — 数据归档与清理
 - **文件:**
   - `common/database.py`

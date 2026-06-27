@@ -44,7 +44,9 @@ class Database:
                 CREATE TABLE IF NOT EXISTS daily_reports (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL,
                     platform TEXT NOT NULL, summary TEXT NOT NULL, raw_data TEXT,
-                    is_camouflage INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now'))
+                    is_camouflage INTEGER DEFAULT 0,
+                    pushed INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT (datetime('now'))
                 );
                 CREATE INDEX IF NOT EXISTS idx_reports_date ON daily_reports(date);
                 CREATE TABLE IF NOT EXISTS run_logs (
@@ -53,13 +55,19 @@ class Database:
                     created_at TEXT DEFAULT (datetime('now'))
                 );
             """)
+        # 迁移：给旧表加 pushed 列（幂等）
+        try:
+            with self._get_conn() as conn:
+                conn.execute("ALTER TABLE daily_reports ADD COLUMN pushed INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
         logger.debug(f"数据库已初始化: {self.db_path}")
 
-    def save_report(self, date, platform, summary, raw_data=None, is_camouflage=False):
+    def save_report(self, date, platform, summary, raw_data=None, is_camouflage=False, pushed=1):
         with self._get_conn() as conn:
             conn.execute(
-                "INSERT INTO daily_reports (date, platform, summary, raw_data, is_camouflage) VALUES (?, ?, ?, ?, ?)",
-                (date, platform, summary, raw_data, int(is_camouflage)),
+                "INSERT INTO daily_reports (date, platform, summary, raw_data, is_camouflage, pushed) VALUES (?, ?, ?, ?, ?, ?)",
+                (date, platform, summary, raw_data, int(is_camouflage), pushed),
             )
 
     def get_reports(self, date, platform=None, limit=10, search=None):
@@ -126,6 +134,25 @@ class Database:
         with self._get_conn() as conn:
             row = conn.execute("SELECT * FROM daily_reports WHERE id=?", (report_id,)).fetchone()
             return dict(row) if row else None
+
+    def update_report_summary(self, report_id: int, summary: str):
+        """更新草稿日报的摘要内容"""
+        with self._get_conn() as conn:
+            conn.execute("UPDATE daily_reports SET summary=? WHERE id=?", (summary, report_id))
+
+    def get_unpushed_reports(self, limit=20):
+        """获取所有未推送的日报草稿"""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM daily_reports WHERE pushed=0 ORDER BY created_at DESC LIMIT ?",
+                (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def set_report_pushed(self, report_id: int):
+        """将日报标记为已推送"""
+        with self._get_conn() as conn:
+            conn.execute("UPDATE daily_reports SET pushed=1 WHERE id=?", (report_id,))
 
     def cleanup_old_records(self, days: int = 30):
         """清理指定天数前的历史数据"""

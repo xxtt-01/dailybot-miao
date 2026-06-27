@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report, type SystemStatus } from '../api/client'
 
-const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void; onNavigate?: (tab: string) => void }>()
 
 const status = ref<SystemStatus | null>(null)
 const versionInfo = ref<any>(null)
@@ -10,7 +10,7 @@ const reports = ref<Report[]>([])
 const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
-const warnings = ref<string[]>([])
+const warnings = ref<{ text: string; tab?: string }[]>([])
 let abortController: AbortController | null = null
 
 async function loadAll() {
@@ -29,20 +29,21 @@ async function loadAll() {
 
     // 环境配置自检
     const cfg = await api.getConfig().catch(() => null)
-    const warns: string[] = []
+    interface WarnItem { text: string; tab?: string }
+    const warns: WarnItem[] = []
     if (cfg) {
       if (!cfg.crawler_sources || Object.keys(cfg.crawler_sources).length === 0) {
-        warns.push('未配置采集源，请前往「采集源」添加仓库')
+        warns.push({ text: '未配置采集源，点击前往添加仓库', tab: 'sources' })
       }
       if (!cfg.providers || Object.keys(cfg.providers).length === 0) {
-        warns.push('未配置 AI 供应商，请检查 config.yaml')
+        warns.push({ text: '未配置 AI 供应商，请检查 config.yaml', tab: 'config' })
       }
       if (!cfg.workflows?.feishu?.webhook_url && !cfg.workflows?.feishu?.app_id) {
-        warns.push('未配置飞书推送，日报生成后不会推送消息')
+        warns.push({ text: '未配置飞书推送，日报生成后不会推送消息', tab: 'config' })
       }
     }
     if (!st) {
-      warns.push('后端服务未连接，部分功能不可用')
+      warns.push({ text: '后端服务未连接，部分功能不可用' })
     }
     warnings.value = warns
   } catch {
@@ -157,9 +158,10 @@ onBeforeUnmount(cleanupSSE)
 
     <!-- 环境警告 -->
     <div v-if="warnings.length > 0" class="warnings-section">
-      <div v-for="(w, i) in warnings" :key="i" class="warning-item glass-card fade-in">
+      <div v-for="(w, i) in warnings" :key="i" class="warning-item glass-card fade-in"
+        :class="{ clickable: !!w.tab }" @click="w.tab && props.onNavigate?.(w.tab)">
         <span class="tag tag-warning">注意</span>
-        <span>{{ w }}</span>
+        <span>{{ w.text }}</span>
       </div>
     </div>
 
@@ -242,6 +244,8 @@ onBeforeUnmount(cleanupSSE)
 
 .warnings-section { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
 .warning-item { display: flex; align-items: center; gap: var(--space-2); padding: 10px 14px; border-left: 3px solid var(--warning); font-size: 12px; }
+.warning-item.clickable { cursor: pointer; transition: var(--transition-fast); }
+.warning-item.clickable:hover { background: rgba(240,160,106,0.06); border-left-color: var(--warning); }
 .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
 @media (max-width: 900px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
 

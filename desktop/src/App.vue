@@ -17,6 +17,7 @@ const currentTab = ref('dashboard')
 const statusInfo = ref('')
 const versionStr = ref('')
 const hasUpdate = ref(false)
+const showShortcuts = ref(false)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 const tabs = [
@@ -36,8 +37,18 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'info')
   toastRef.value?.add(message, type)
 }
 
+function navigateTo(tab: string) { switchTab(tab) }
+
 // 键盘快捷键
 const tabKeys = ['dashboard', 'reports', 'logs', 'config', 'stats', 'camouflage', 'sources', 'scheduler']
+
+const shortcuts = [
+  { keys: '1 ~ 8', desc: '切换页面' },
+  { keys: 'Ctrl + E', desc: '立即执行日报' },
+  { keys: 'Ctrl + Alt + D', desc: '显示/隐藏窗口' },
+  { keys: '?', desc: '打开快捷键帮助' },
+  { keys: 'Esc', desc: '关闭弹窗' },
+]
 
 function onKeydown(e: KeyboardEvent) {
   // 1-8 切换页面
@@ -54,6 +65,14 @@ function onKeydown(e: KeyboardEvent) {
     api.triggerReport()
       .then(() => showToast('日报生成任务已提交', 'success'))
       .catch(() => showToast('触发失败：后端未连接', 'error'))
+  }
+  // ? 显示快捷键帮助
+  if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+    showShortcuts.value = !showShortcuts.value
+  }
+  // Escape 关闭帮助
+  if (e.key === 'Escape' && showShortcuts.value) {
+    showShortcuts.value = false
   }
 }
 
@@ -107,7 +126,7 @@ onBeforeUnmount(() => {
             <ThemeSwitcher />
           </div>
           <div class="footer-row shortcut-hint text-dim text-sm">
-            <span>1-8 切换 · Ctrl+E 执行 · Ctrl+Alt+D 呼出</span>
+            <span>1-8 切换 · Ctrl+E 执行 · ? 帮助</span>
           </div>
         </div>
       </aside>
@@ -115,7 +134,7 @@ onBeforeUnmount(() => {
       <!-- 内容区 -->
       <main class="main-content">
         <Transition name="page" mode="out-in">
-          <Dashboard v-if="currentTab === 'dashboard'" key="dashboard" :show-toast="showToast" />
+          <Dashboard v-if="currentTab === 'dashboard'" key="dashboard" :show-toast="showToast" :on-navigate="navigateTo" />
           <Reports v-else-if="currentTab === 'reports'" key="reports" :show-toast="showToast" />
           <Logs v-else-if="currentTab === 'logs'" key="logs" />
           <Config v-else-if="currentTab === 'config'" key="config" :show-toast="showToast" />
@@ -126,6 +145,24 @@ onBeforeUnmount(() => {
         </Transition>
       </main>
     </div>
+
+    <!-- 快捷键帮助弹窗 -->
+    <Teleport to="body">
+      <div v-if="showShortcuts" class="modal-overlay" @click.self="showShortcuts = false">
+        <div class="modal-box shortcuts-panel">
+          <div class="modal-header">
+            <h3>⌨ 快捷键</h3>
+            <button class="btn btn-ghost" @click="showShortcuts = false">✕</button>
+          </div>
+          <div class="shortcuts-grid">
+            <div v-for="s in shortcuts" :key="s.keys" class="shortcut-row">
+              <span class="shortcut-keys">{{ s.keys }}</span>
+              <span class="shortcut-desc text-dim">{{ s.desc }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -205,6 +242,18 @@ onBeforeUnmount(() => {
 .footer-actions { justify-content: flex-end; }
 .footer-status { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shortcut-hint { opacity: 0.45; font-size: 10px; line-height: 1.4; text-align: center; justify-content: center; }
+
+/* ── 快捷键帮助 ── */
+.shortcuts-panel { max-width: 400px; }
+.shortcuts-grid { display: flex; flex-direction: column; gap: var(--space-1); }
+.shortcut-row { display: flex; align-items: center; gap: var(--space-2); padding: 6px 0; border-bottom: 1px solid var(--glass-border); font-size: 12px; }
+.shortcut-row:last-child { border-bottom: none; }
+.shortcut-keys {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px;
+  min-width: 100px; text-align: center; color: var(--accent);
+}
+.shortcut-desc { flex: 1; }
 
 /* ── 内容区 ── */
 .main-content {
