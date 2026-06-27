@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { api, type TrendData, type PlatformStat } from '../api/client'
 import * as echarts from 'echarts'
 

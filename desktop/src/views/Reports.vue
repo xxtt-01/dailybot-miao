@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report } from '../api/client'
 
 const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
@@ -75,6 +75,10 @@ function exportCSV() {
 onMounted(() => {
   loadReports()
   window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
