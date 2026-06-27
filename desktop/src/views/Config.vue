@@ -2,6 +2,8 @@
 import { ref, onMounted, h, defineComponent, type PropType } from 'vue'
 import { api } from '../api/client'
 
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
+
 const configData = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
@@ -39,12 +41,12 @@ async function saveConfig() {
     if (res.success) {
       configData.value = parsed
       editMode.value = false
-      alert('配置已保存')
+      props.showToast?.('配置已保存', 'success')
     } else {
-      alert('保存失败: ' + (res.message || '未知错误'))
+      props.showToast?.('保存失败: ' + (res.message || '未知错误'), 'error')
     }
   } catch (e: any) {
-    alert('保存失败: ' + (e.message || 'JSON 格式错误'))
+    props.showToast?.('保存失败: ' + (e.message || 'JSON 格式错误'), 'error')
   } finally {
     saving.value = false
   }

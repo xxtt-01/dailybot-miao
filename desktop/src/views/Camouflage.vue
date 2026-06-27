@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
 import { ref, onMounted } from 'vue'
 import { api, type CamouflageItem } from '../api/client'
 
@@ -26,10 +27,10 @@ async function deleteItem(id: string, source: string) {
     if (res.success) {
       items.value = items.value.filter(i => i.id !== id)
     } else {
-      alert('删除失败')
+      props.showToast?.('删除失败', 'error')
     }
   } catch (e: any) {
-    alert('删除失败: ' + (e.message || '未知错误'))
+    props.showToast?.('删除失败: ' + (e.message || '未知错误'), 'error')
   }
 }
 

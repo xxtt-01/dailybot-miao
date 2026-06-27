@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { api, type Report } from '../api/client'
 
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
+
 const dateFilter = ref(new Date().toISOString().slice(0, 10))
 const platformFilter = ref('')
 const reports = ref<Report[]>([])
@@ -30,7 +32,7 @@ async function openDetail(id: number) {
     detailReport.value = res.report
     showDetail.value = true
   } catch (e: any) {
-    alert('获取详情失败: ' + (e.message || '未知错误'))
+    props.showToast?.('获取详情失败: ' + (e.message || '未知错误'), 'error')
   }
 }
 

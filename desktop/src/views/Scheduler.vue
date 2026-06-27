@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
 import { ref, onMounted } from 'vue'
 import { api } from '../api/client'
 
@@ -29,7 +30,7 @@ async function installTask() {
 
   // 简单格式校验
   if (!/^\d{2}:\d{2}$/.test(timeInput.trim())) {
-    alert('时间格式错误，请使用 HH:MM 格式 (如 08:00)')
+    props.showToast?.('时间格式错误，请使用 HH:MM 格式', 'error')
     return
   }
 
@@ -37,13 +38,13 @@ async function installTask() {
   try {
     const res = await api.installScheduler(timeInput.trim())
     if (res.success) {
-      alert('定时任务已安装')
+      props.showToast?.('定时任务已安装', 'success')
       await loadData()
     } else {
-      alert('安装失败')
+      props.showToast?.('安装失败', 'error')
     }
   } catch (e: any) {
-    alert('安装失败: ' + (e.message || '未知错误'))
+    props.showToast?.('安装失败: ' + (e.message || '未知错误'), 'error')
   } finally {
     installing.value = false
   }
@@ -55,13 +56,13 @@ async function uninstallAll() {
   try {
     const res = await api.uninstallScheduler()
     if (res.success) {
-      alert('定时任务已卸载')
+      props.showToast?.('定时任务已卸载', 'success')
       await loadData()
     } else {
-      alert('卸载失败')
+      props.showToast?.('卸载失败', 'error')
     }
   } catch (e: any) {
-    alert('卸载失败: ' + (e.message || '未知错误'))
+    props.showToast?.('卸载失败: ' + (e.message || '未知错误'), 'error')
   } finally {
     uninstalling.value = false
   }
