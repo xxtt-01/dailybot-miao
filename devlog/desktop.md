@@ -1,5 +1,21 @@
 # desktop 模块日志
 
+## 2026-06-27: 窗口优化 — 无边框 + 自定义标题栏 + 透明背景
+- **文件:**
+  - `desktop/electron/main/index.ts`
+  - `desktop/electron/preload/index.ts`
+  - `desktop/src/components/TitleBar.vue`
+  - `desktop/src/App.vue`
+  - `desktop/src/styles/main.css`
+  - `desktop/index.html`
+- **原因:** 原生 Windows 标题栏与玻璃拟态风格不匹配
+- **决策:** 
+  - 启用 frame:false 无边框模式，配合 transparent + acrylic 毛玻璃效果
+  - 自定义 TitleBar 组件：左侧应用图标/名称（可拖拽）、右侧最小化/最大化/关闭
+  - preload 通过 contextBridge 暴露 windowControls API，确保安全性
+  - 最大化/非最大化状态通过 IPC 实时同步到渲染进程
+- **影响范围:** 桌面版窗口样式和交互方式
+
 ## 2026-06-27: 创建 Electron + Vue 3 桌面版项目骨架
 - **文件:**
   - `desktop/package.json`
