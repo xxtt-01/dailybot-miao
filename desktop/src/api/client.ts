@@ -2,11 +2,18 @@
 const BASE = 'http://127.0.0.1:8001'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = BASE + path + (path.includes('?') ? '&' : '?') + 'key=dailybot-admin'
+  const url = BASE + path
   const res = await fetch(url, {
-    headers: { Accept: 'application/json', ...options?.headers },
+    headers: {
+      Accept: 'application/json',
+      'X-Desktop-Client': 'true',  // 桌面版本地请求，跳过 key 鉴权
+      ...options?.headers,
+    },
     ...options,
   })
+  if (res.status === 401) {
+    throw new Error('API Key 不匹配，请检查 config.yaml 中的 admin.api_key 配置')
+  }
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`请求失败 ${res.status}: ${text.slice(0, 200)}`)

@@ -24,7 +24,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 const PYTHON_PORT = 8001
 let pythonProcess: ChildProcess | null = null
 
-function startPythonBackend() {
+function startPythonBackend(): Promise<void> {
   const isDev = !!VITE_DEV_SERVER_URL || !app.isPackaged
   const pythonCmd = isDev ? 'python' : path.join(process.resourcesPath, 'backend', 'dailybot-backend.exe')
   const args = isDev
@@ -50,6 +50,24 @@ function startPythonBackend() {
     console.log(`[Electron] Python 进程退出 (code: ${code})`)
     pythonProcess = null
   })
+
+  // 等待后端就绪（健康检查轮询）
+  return waitForBackend()
+}
+
+async function waitForBackend(): Promise<void> {
+  const maxRetries = 30  // 最多 30 秒
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${PYTHON_PORT}/health`)
+      if (res.ok) {
+        console.log(`[Electron] Python 后端就绪 (尝试 ${i + 1} 次)`)
+        return
+      }
+    } catch { /* 后端尚未就绪 */ }
+    await new Promise(r => setTimeout(r, 1000))
+  }
+  console.warn('[Electron] Python 后端启动超时，继续启动窗口')
 }
 
 function stopPythonBackend() {
@@ -192,12 +210,11 @@ ipcMain.handle('get-auto-launch', () => {
 
 // ── 应用生命周期 ──────────────────────────────
 
-app.whenReady().then(() => {
-  startPythonBackend()
+app.whenReady().then(async () => {
+  await startPythonBackend()
   createWindow()
-  setTimeout(() => {
-    if (win) createTray(win)
-  }, 2000)
+  // 窗口创建后再创建托盘（等一段让 DOM 也准备）
+  if (win) createTray(win)
 })
 
 app.on('window-all-closed', () => {

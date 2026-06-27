@@ -8,7 +8,7 @@ import yaml
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Query, Depends, HTTPException, status
+from fastapi import APIRouter, Header, Query, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 
@@ -17,7 +17,13 @@ from common.database import db
 from core.engine import run_reporting_logic
 
 
-def verify_admin_key(key: Optional[str] = Query(None, alias="key")):
+def verify_admin_key(
+    key: Optional[str] = Query(None, alias="key"),
+    x_desktop_client: Optional[str] = Header(None),
+):
+    # 桌面版客户端（localhost）跳过鉴权 — 信任本机用户
+    if x_desktop_client == "true":
+        return "desktop"
     admin_cfg = config.get("admin", {})
     expected_key = admin_cfg.get("api_key", "dailybot-admin")
     if not key or key != expected_key:
