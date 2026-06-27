@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, h, defineComponent, type PropType } from 'vue'
+import { ref, computed, onMounted, h, defineComponent, type PropType } from 'vue'
 import { api } from '../api/client'
 
 const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
@@ -10,6 +10,41 @@ const error = ref('')
 const editMode = ref(false)
 const editText = ref('')
 const saving = ref(false)
+const toggling = ref<string | null>(null)
+
+// 提取已启用的平台列表（含 auto_push 状态）
+const platforms = computed(() => {
+  const raw = configData.value?.platforms
+  if (!raw || typeof raw !== 'object') return []
+  return Object.entries(raw)
+    .filter(([_, v]: [string, any]) => v && typeof v === 'object' && v.ai_model)
+    .map(([name, cfg]: [string, any]) => ({
+      name,
+      autoPush: cfg.auto_push !== false,
+    }))
+})
+
+async function toggleAutoPush(name: string, enabled: boolean) {
+  toggling.value = name
+  try {
+    const res = await api.updateConfig({
+      platforms: { [name]: { auto_push: enabled } },
+    })
+    if (res.success) {
+      // 更新本地数据
+      if (configData.value?.platforms?.[name]) {
+        configData.value.platforms[name].auto_push = enabled
+      }
+      props.showToast?.(`${name} 自动推送已${enabled ? '开启' : '关闭'}`, 'success')
+    } else {
+      props.showToast?.('保存失败', 'error')
+    }
+  } catch (e: any) {
+    props.showToast?.('保存失败: ' + (e.message || '未知错误'), 'error')
+  } finally {
+    toggling.value = null
+  }
+}
 
 async function loadConfig() {
   loading.value = true
@@ -152,12 +187,29 @@ onMounted(loadConfig)
     </div>
 
     <!-- 只读树形模式 -->
-    <div v-else-if="!editMode" class="config-tree glass-card">
-      <div class="tree-root">
-        <TreeNode
-          v-for="key in Object.keys(configData || {})" :key="key"
-          :data="{ key, val: configData[key], path: 'root', depth: 0 }"
-        />
+    <div v-else-if="!editMode">
+      <!-- 快捷设置：auto_push 开关 -->
+      <div v-if="platforms.length > 0" class="quick-settings glass-card">
+        <div class="quick-title text-dim text-sm">快捷设置</div>
+        <div v-for="p in platforms" :key="p.name" class="quick-row">
+          <div class="quick-info">
+            <span class="quick-label">{{ p.name }}</span>
+            <span class="quick-desc text-dim text-sm">自动推送日报到{{ p.name === 'feishu' ? '飞书' : p.name }}</span>
+          </div>
+          <label class="toggle-switch" :class="{ disabled: toggling === p.name }">
+            <input type="checkbox" :checked="p.autoPush" :disabled="toggling === p.name"
+              @change="toggleAutoPush(p.name, ($event.target as HTMLInputElement).checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="config-tree glass-card">
+        <div class="tree-root">
+          <TreeNode
+            v-for="key in Object.keys(configData || {})" :key="key"
+            :data="{ key, val: configData[key], path: 'root', depth: 0 }"
+          />
+        </div>
       </div>
     </div>
 
@@ -182,6 +234,34 @@ onMounted(loadConfig)
 .error-box { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); }
 .config-tree { padding: var(--space-2); max-height: calc(100vh - 150px); overflow-y: auto; }
 .tree-root { font-size: 12px; }
+
+/* 快捷设置 */
+.quick-settings { padding: var(--space-2); margin-bottom: var(--space-2); }
+.quick-title { margin-bottom: var(--space-2); letter-spacing: 0.3px; }
+.quick-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--glass-border); }
+.quick-row:last-child { border-bottom: none; }
+.quick-info { display: flex; flex-direction: column; gap: 1px; }
+.quick-label { font-size: 12px; font-weight: 500; }
+.quick-desc { font-size: 10px; }
+
+/* Toggle 开关 */
+.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: rgba(128,138,152,0.2);
+  border-radius: 20px; transition: var(--transition-fast);
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  left: 2px; bottom: 2px; background: var(--text-dim);
+  border-radius: 50%; transition: var(--transition-fast);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent-glow); }
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(16px); background: var(--accent);
+}
+.toggle-switch.disabled { opacity: 0.4; pointer-events: none; }
 .edit-area { padding: var(--space-2); }
 .config-textarea { width: 100%; min-height: 400px; font-family: var(--font-mono); font-size: 12px; padding: var(--space-2); resize: vertical; }
 .edit-actions { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-2); }
