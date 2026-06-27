@@ -127,5 +127,20 @@ class Database:
             row = conn.execute("SELECT * FROM daily_reports WHERE id=?", (report_id,)).fetchone()
             return dict(row) if row else None
 
+    def cleanup_old_records(self, days: int = 30):
+        """清理指定天数前的历史数据"""
+        with self._get_conn() as conn:
+            reports_deleted = conn.execute(
+                "DELETE FROM daily_reports WHERE date < date('now', ?)", (f"-{days} days",)
+            ).rowcount
+            logs_deleted = conn.execute(
+                "DELETE FROM run_logs WHERE date < date('now', ?)", (f"-{days} days",)
+            ).rowcount
+            # 也清理伪装历史
+            camo_deleted = conn.execute(
+                "DELETE FROM camouflage_history WHERE date < date('now', ?)", (f"-{days} days",)
+            ).rowcount
+            return {"reports_deleted": reports_deleted, "logs_deleted": logs_deleted, "camouflage_deleted": camo_deleted}
+
 
 db = Database()

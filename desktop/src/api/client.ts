@@ -135,4 +135,6 @@ export const api = {
   uninstallScheduler: () =>
     request<{ success: boolean }>('/admin/scheduler/uninstall', { method: 'POST' }),
   getDesktopVersion: () => request<VersionInfo>('/admin/desktop-version'),
+  cleanupData: (days = 30) =>
+    request<{ success: boolean; message: string; details: any }>(`/admin/maintenance/cleanup?days=${days}`, { method: 'POST' }),
 }
