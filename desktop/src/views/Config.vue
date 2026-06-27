@@ -72,7 +72,7 @@ async function saveConfig() {
   saving.value = true
   try {
     const parsed = JSON.parse(editText.value)
-    const res = await api.updateConfig(parsed)
+    const res = await api.updateConfig(parsed, true)
     if (res.success) {
       configData.value = parsed
       editMode.value = false

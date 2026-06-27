@@ -85,12 +85,15 @@ export interface VersionInfo {
 export const api = {
   getStatus: () => request<SystemStatus>('/admin/status'),
   getConfig: () => request<any>('/admin/config?masked=true'),
-  updateConfig: (data: any) =>
-    request<{ success: boolean; message: string }>('/admin/config', {
+  updateConfig: (data: any, replace = false) => {
+    let path = '/admin/config'
+    if (replace) path += '?replace=true'
+    return request<{ success: boolean; message: string }>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }),
+    })
+  },
   getReports: (date?: string, platform?: string, search?: string) => {
     let path = '/admin/reports?limit=50'
     if (date) path += `&date=${date}`

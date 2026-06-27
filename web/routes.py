@@ -390,10 +390,27 @@ def _push_log_to_queue(message):
 
 
 @router.post("/config")
-async def update_config(data: dict):
+async def update_config(data: dict, replace: bool = Query(False)):
     """更新配置（桌面版配置编辑用）"""
     try:
-        _write_config_yaml(data)
+        if replace:
+            # 全量替换：直接写 data，不做合并（JSON 编辑器用）
+            import yaml
+            target_path = None
+            app_dir = __import__("utils.path_helper", fromlist=["get_app_dir"]).get_app_dir()
+            for p in [os.path.join(app_dir, "config.yaml"), os.path.join(app_dir, "config", "config.yaml")]:
+                if os.path.exists(p):
+                    target_path = p
+                    break
+            if not target_path:
+                rp = __import__("utils.path_helper", fromlist=["get_resource_path"]).get_resource_path("config/config.yaml")
+                if os.path.exists(rp):
+                    target_path = rp
+            if target_path:
+                with open(target_path, "w", encoding="utf-8") as f:
+                    yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        else:
+            _write_config_yaml(data)
         config.reload()
         return {"success": True, "message": "配置已更新"}
     except Exception as e:
