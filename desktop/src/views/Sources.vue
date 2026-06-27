@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
 import { ref, onMounted } from 'vue'
 import { api, type SourceInfo } from '../api/client'
 
@@ -25,7 +26,7 @@ async function loadData() {
 
 async function addSource() {
   if (!formPath.value.trim()) {
-    alert('请输入仓库路径')
+    props.showToast?.('请输入仓库路径', 'error')
     return
   }
   adding.value = true
@@ -36,10 +37,10 @@ async function addSource() {
       formBranch.value = 'main'
       await loadData()
     } else {
-      alert('添加失败')
+      props.showToast?.('添加失败', 'error')
     }
   } catch (e: any) {
-    alert('添加失败: ' + (e.message || '未知错误'))
+    props.showToast?.('添加失败: ' + (e.message || '未知错误'), 'error')
   } finally {
     adding.value = false
   }
@@ -52,10 +53,10 @@ async function deleteSource(platform: string, index: number) {
     if (res.success) {
       await loadData()
     } else {
-      alert('删除失败')
+      props.showToast?.('删除失败', 'error')
     }
   } catch (e: any) {
-    alert('删除失败: ' + (e.message || '未知错误'))
+    props.showToast?.('删除失败: ' + (e.message || '未知错误'), 'error')
   }
 }
 
