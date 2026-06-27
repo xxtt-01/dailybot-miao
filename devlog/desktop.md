@@ -201,6 +201,15 @@
   - 全部 5 个含定时器/SSE/监听的组件均已审计确认正确实现 `onBeforeUnmount` 清理
 - **影响范围:** 后端 2 文件 + 前端 2 文件
 
+## 2026-06-28: 审查修复 — _write_config_yaml 深合并 + 维护定时器泄漏
+- **文件:**
+  - `web/routes.py`
+  - `desktop/electron/main/index.ts`
+- **决策:**
+  - `_write_config_yaml` 重写为递归深合并（`_deep_merge`），修复嵌套配置更新时清空同层其他键的错误
+  - 维护定时器首次 1h delay 未存变量无法取消，已修复
+- **影响范围:** 后端 1 文件 + Electron 主进程 1 文件
+
 ## 2026-06-28: Sprint 5 — 日报编辑推送工作流
 - **文件:**
   - `common/database.py`

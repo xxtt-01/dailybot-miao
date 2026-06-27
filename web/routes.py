@@ -31,6 +31,17 @@ def verify_admin_key(
     return key
 
 
+def _deep_merge(base: dict, updates: dict) -> dict:
+    """递归合并字典，保留未在 updates 中出现的键"""
+    result = dict(base)
+    for k, v in updates.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
 def _write_config_yaml(updates: dict):
     target_path = None
     app_dir = __import__("utils.path_helper", fromlist=["get_app_dir"]).get_app_dir()
@@ -47,11 +58,7 @@ def _write_config_yaml(updates: dict):
         return
     with open(target_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
-    for k, v in updates.items():
-        if isinstance(v, dict) and k in raw and isinstance(raw[k], dict):
-            raw[k].update(v)
-        else:
-            raw[k] = v
+    raw = _deep_merge(raw, updates)
     with open(target_path, "w", encoding="utf-8") as f:
         yaml.dump(raw, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 

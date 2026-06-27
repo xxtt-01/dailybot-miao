@@ -315,6 +315,7 @@ function stopWatchdog() {
 // ── 定期自维护（每 24 小时） ──────────────────────────
 
 let maintenanceTimer: ReturnType<typeof setInterval> | null = null
+let maintenanceDelayTimer: ReturnType<typeof setTimeout> | null = null
 
 async function runMaintenance() {
   console.log('[维护] 开始 24 小时定期维护...')
@@ -343,13 +344,17 @@ async function runMaintenance() {
 
 function startMaintenanceTimer() {
   // 启动后先等 1 小时再首次执行（给应用稳定时间）
-  setTimeout(() => {
+  maintenanceDelayTimer = setTimeout(() => {
     runMaintenance()
     maintenanceTimer = setInterval(runMaintenance, 24 * 60 * 60 * 1000)
   }, 60 * 60 * 1000)
 }
 
 function stopMaintenanceTimer() {
+  if (maintenanceDelayTimer) {
+    clearTimeout(maintenanceDelayTimer)
+    maintenanceDelayTimer = null
+  }
   if (maintenanceTimer) {
     clearInterval(maintenanceTimer)
     maintenanceTimer = null
