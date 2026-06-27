@@ -151,6 +151,16 @@
   - 快捷键帮助：按 `?` 弹出快捷操作指南弹窗，侧边栏提示改为 `? 帮助`
 - **影响范围:** 前端 2 文件
 
+## 2026-06-28: 虚拟滚动 — 日志列表性能优化
+- **文件:**
+  - `desktop/src/components/VirtualList.vue`（新建）
+  - `desktop/src/views/Logs.vue`
+- **决策:**
+  - 创建通用 VirtualList.vue 组件：基于 scrollTop 计算可见范围，仅渲染视口内元素，支持 overscan
+  - Logs.vue 历史模式改为 VirtualList 渲染，大幅优化大量日志时的性能
+  - live 模式保留 TransitionGroup 动画（日志条目有限，不需虚拟化）
+- **影响范围:** 新建组件 + Logs 页适配
+
 ## 2026-06-28: Sprint 5 — 日报编辑推送工作流
 - **文件:**
   - `common/database.py`
