@@ -128,6 +128,20 @@
   - 系统通知：Dashboard 触发日报后通过 SSE 监听执行进度，完成时发原生通知 + Toast
 - **影响范围:** 后端 2 文件 + 前端 6 文件
 
+## 2026-06-27: 审查修复 — SSE 鉴权/窗口事件/内存泄漏/冗余导入
+- **文件:**
+  - `desktop/src/views/Dashboard.vue`
+  - `desktop/electron/main/index.ts`
+  - `desktop/src/views/Stats.vue`
+  - `desktop/src/views/Reports.vue`
+- **原因:** 全面审查修改完整性时发现的问题
+- **决策:**
+  - SSE 鉴权：EventSource 不支持自定义 Header，硬编码 key 有安全隐患；改用 fetch + ReadableStream 读取 SSE 流，走 `X-Desktop-Client` 头
+  - 窗口事件：重复的 `win.on('close')` 合并为一个；resize/move 保存防抖 500ms 避免频繁写磁盘
+  - 内存泄漏：Reports.vue 的 keydown 监听器缺少 `onBeforeUnmount` 清理
+  - 冗余导入：Stats.vue 的 `computed` 导入了但未使用
+- **影响范围:** 前端 3 文件 + Electron 主进程 1 文件
+
 ## 2026-06-27: Sprint 3 — 数据归档与清理
 - **文件:**
   - `common/database.py`

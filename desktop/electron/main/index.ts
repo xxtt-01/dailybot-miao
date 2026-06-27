@@ -227,24 +227,23 @@ async function createWindow() {
     win.loadFile(indexHtml)
   }
 
-  // 保存窗口状态
-  win.on('close', () => {
-    if (win) saveWindowState(win)
-  })
-  win.on('resize', () => {
-    if (win) saveWindowState(win)
-  })
-  win.on('move', () => {
-    if (win) saveWindowState(win)
-  })
-
-  // 关闭按钮 → 隐藏到托盘
+  // 关闭：保存窗口状态 + 隐藏到托盘
   win.on('close', (event) => {
+    if (win) saveWindowState(win)
     if (!(app as any).isQuitting) {
       event.preventDefault()
       win?.hide()
     }
   })
+
+  // resize/move 防抖保存（避免频繁写磁盘）
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
+  const debouncedSave = () => {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => { if (win) saveWindowState(win) }, 500)
+  }
+  win.on('resize', debouncedSave)
+  win.on('move', debouncedSave)
 
   // 最大化状态变更 → 通知渲染进程
   win.on('maximize', () => {

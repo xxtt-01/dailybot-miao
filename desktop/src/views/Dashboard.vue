@@ -11,7 +11,7 @@ const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
 const warnings = ref<string[]>([])
-let sseSource: EventSource | null = null
+let abortController: AbortController | null = null
 
 async function loadAll() {
   try {
@@ -56,36 +56,68 @@ async function triggerReport() {
   try {
     await api.triggerReport()
 
-    // SSE 监听执行进度
-    sseSource = new EventSource('http://127.0.0.1:8001/admin/live-logs?key=dailybot-admin')
-    sseSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        const text = data.text || ''
-        if (text.includes('执行完毕') || text.includes('✅')) {
-          cleanupSSE()
-          reportLoading.value = false
-          props.showToast?.('日报生成完成', 'success')
-          window.electronAPI?.showNotification('DailyBot', '日报生成完成')
-          loadAll()
-        } else if ((text.includes('失败') || text.includes('❌')) && !text.includes('触发')) {
-          cleanupSSE()
-          reportLoading.value = false
-          props.showToast?.('日报生成失败，查看日志了解详情', 'error')
-          window.electronAPI?.showNotification('DailyBot', '日报生成失败')
-          loadAll()
-        }
-      } catch { /* 忽略 */ }
+    // 用 fetch 读取 SSE（支持 X-Desktop-Client 头，避免硬编码 key）
+    abortController = new AbortController()
+    const response = await fetch('http://127.0.0.1:8001/admin/live-logs', {
+      headers: { 'X-Desktop-Client': 'true' },
+      signal: abortController.signal,
+    })
+    if (!response.ok) {
+      reportLoading.value = false
+      loadAll()
+      return
     }
-    sseSource.onerror = () => {
+    const reader = response.body?.getReader()
+    if (!reader) {
+      reportLoading.value = false
+      loadAll()
+      return
+    }
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    const readLoop = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const parsed = JSON.parse(line.slice(6))
+              const text = parsed.text || ''
+              if (text.includes('执行完毕') || text.includes('✅')) {
+                cleanupSSE()
+                reportLoading.value = false
+                props.showToast?.('日报生成完成', 'success')
+                window.electronAPI?.showNotification?.('DailyBot', '日报生成完成')
+                loadAll()
+                return
+              } else if ((text.includes('失败') || text.includes('❌')) && !text.includes('触发')) {
+                cleanupSSE()
+                reportLoading.value = false
+                props.showToast?.('日报生成失败，查看日志了解详情', 'error')
+                window.electronAPI?.showNotification?.('DailyBot', '日报生成失败')
+                loadAll()
+                return
+              }
+            }
+          }
+        }
+      } catch { /* 流中断 */ }
       cleanupSSE()
       if (reportLoading.value) {
         reportLoading.value = false
         loadAll()
       }
     }
+    readLoop()
+
+    // 30 秒超时保护
     setTimeout(() => {
-      if (sseSource) {
+      if (abortController) {
         cleanupSSE()
         reportLoading.value = false
       }
@@ -97,9 +129,9 @@ async function triggerReport() {
 }
 
 function cleanupSSE() {
-  if (sseSource) {
-    sseSource.close()
-    sseSource = null
+  if (abortController) {
+    abortController.abort()
+    abortController = null
   }
 }
 
