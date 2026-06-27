@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { api, type RunLog } from '../api/client'
+import VirtualList from '../components/VirtualList.vue'
 
 const logs = ref<RunLog[]>([])
 const liveLines = ref<{ id: number; time: string; level: string; msg: string }[]>([])
@@ -161,10 +162,10 @@ onBeforeUnmount(() => {
       <span>{{ error }}</span>
     </div>
 
-    <!-- 历史日志列表 -->
-    <div v-else-if="!liveMode" ref="listRef" class="log-scroll">
-      <TransitionGroup name="log-fade" tag="div" class="log-list">
-        <div v-for="log in logs" :key="log.id" class="glass-card log-item">
+    <!-- 历史日志列表（虚拟滚动） -->
+    <VirtualList v-else-if="!liveMode" :items="logs" :item-height="36" :overscan="8">
+      <template #default="{ item: log }">
+        <div class="glass-card log-item">
           <span class="log-time">{{ timeStr(log.created_at) }}</span>
           <span class="tag" :class="statusTag(log.status)">{{ statusLabel(log.status) }}</span>
           <span class="log-msg">
@@ -172,11 +173,11 @@ onBeforeUnmount(() => {
             {{ log.message }}
           </span>
         </div>
-      </TransitionGroup>
-      <div v-if="logs.length === 0" class="glass-card" style="padding:32px;text-align:center">
+      </template>
+      <template #empty>
         <div class="text-dim">暂无日志记录</div>
-      </div>
-    </div>
+      </template>
+    </VirtualList>
 
     <!-- 实时日志列表 -->
     <div v-else ref="listRef" class="log-scroll live-scroll">
@@ -223,7 +224,6 @@ onBeforeUnmount(() => {
 
 .loading-state { padding: var(--space-2); }
 
-.log-scroll { flex: 1; overflow-y: auto; }
 .log-list { display: flex; flex-direction: column; gap: 3px; }
 
 .log-item {
