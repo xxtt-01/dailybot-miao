@@ -17,6 +17,7 @@ interface WindowControls {
 interface ElectronAPI {
   setAutoLaunch: (enabled: boolean) => Promise<boolean>
   getAutoLaunch: () => Promise<boolean>
+  showNotification: (title: string, body: string) => Promise<void>
 }
 
 interface Window {

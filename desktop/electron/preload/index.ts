@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('windowControls', {
 contextBridge.exposeInMainWorld('electronAPI', {
   setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch', enabled),
   getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
 })

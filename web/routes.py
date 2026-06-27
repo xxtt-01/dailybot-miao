@@ -104,15 +104,15 @@ async def get_config(masked: bool = Query(True, description="是否脱敏")):
 
 
 @router.get("/reports")
-async def get_reports(date: Optional[str] = None, platform: Optional[str] = None, limit: int = Query(10, ge=1, le=100)):
+async def get_reports(date: Optional[str] = None, platform: Optional[str] = None, search: Optional[str] = None, limit: int = Query(10, ge=1, le=100)):
     target_date = date or datetime.now().strftime("%Y-%m-%d")
-    reports = db.get_reports(target_date, platform, limit)
+    reports = db.get_reports(target_date, platform, limit, search)
     return {"date": target_date, "reports": reports, "count": len(reports)}
 
 
 @router.get("/logs")
-async def get_logs(limit: int = Query(50, ge=1, le=200)):
-    logs = db.get_run_logs(limit)
+async def get_logs(limit: int = Query(50, ge=1, le=200), search: Optional[str] = None):
+    logs = db.get_run_logs(limit, search)
     return {"logs": logs, "count": len(logs)}
 
 
@@ -151,6 +151,33 @@ async def get_report_detail(id: int = Query(...)):
     return {"report": report}
 
 
+@router.get("/reports/summary")
+async def get_reports_summary(start: str = Query(...), end: str = Query(...)):
+    """获取指定日期范围内的日报聚合（周报/月报用）"""
+    reports = db.get_reports_by_date_range(start, end, 500)
+    total = len(reports)
+    by_platform: dict = {}
+    by_type = {"normal": 0, "camouflage": 0}
+    for r in reports:
+        p = r.get("platform", "unknown")
+        if p not in by_platform:
+            by_platform[p] = {"count": 0, "items": []}
+        by_platform[p]["count"] += 1
+        by_platform[p]["items"].append(r)
+        if r.get("is_camouflage"):
+            by_type["camouflage"] += 1
+        else:
+            by_type["normal"] += 1
+    return {
+        "start": start,
+        "end": end,
+        "total": total,
+        "by_platform": by_platform,
+        "by_type": by_type,
+        "reports": reports,
+    }
+
+
 @router.get("/stats/trend")
 async def get_stats_trend(days: int = Query(7, ge=1, le=90)):
     data = db.get_report_trend(days)
@@ -169,6 +196,29 @@ async def get_platform_stats():
         if status in platforms[p]:
             platforms[p][status] = row["cnt"]
     return {"platforms": list(platforms.values())}
+
+
+@router.get("/stats/platform-trend")
+async def get_platform_trend(days: int = Query(7, ge=1, le=90)):
+    """各平台日报数量趋势（多平台堆叠图用）"""
+    rows = db.get_platform_trend(days)
+    # 重组为按日期+平台的结构
+    days_set: list = []
+    platforms_map: dict = {}
+    for r in rows:
+        d = r["date"]
+        p = r["platform"]
+        c = r["cnt"]
+        if d not in days_set:
+            days_set.append(d)
+        if p not in platforms_map:
+            platforms_map[p] = {}
+        platforms_map[p][d] = c
+    # 填充为数组
+    result: dict = {}
+    for p, day_counts in platforms_map.items():
+        result[p] = [day_counts.get(d, 0) for d in days_set]
+    return {"days": days_set, "platforms": result}
 
 
 @router.get("/camouflage")

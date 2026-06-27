@@ -106,3 +106,24 @@
   - 键盘导航：数字键 1-8 切换页面，`Ctrl+E` 快速执行日报
   - 环境自检：Dashboard 加载时检测配置完整性，显示缺失警告 banner
 - **影响范围:** Electron 主进程、App 布局、Dashboard 概览页
+
+## 2026-06-27: Sprint 2 — 数据能力增强（搜索/导出/聚合/对比/通知）
+- **文件:**
+  - `common/database.py`
+  - `web/routes.py`
+  - `desktop/src/api/client.ts`
+  - `desktop/src/views/Reports.vue`
+  - `desktop/src/views/Logs.vue`
+  - `desktop/src/views/Stats.vue`
+  - `desktop/src/views/Dashboard.vue`
+  - `desktop/electron/main/index.ts`
+  - `desktop/electron/preload/index.ts`
+  - `desktop/src/vite-env.d.ts`
+- **原因:** 桌面版功能基本完成后，需要增强数据处理能力和使用体验
+- **决策:**
+  - 搜索增强：后端 reports/logs API 增加 search 参数做 LIKE 模糊匹配，前端增加搜索输入框
+  - CSV 导出：Reports 页面增加"导出 CSV"按钮，客户端生成 UTF-8 BOM CSV 下载
+  - 周报/月报：后端新增 `/admin/reports/summary` 聚合接口 + Stats.vue 增加汇总统计面板
+  - 多平台对比：后端新增 `get_platform_trend` 方法 + 路由 + Stats.vue 堆叠柱状图
+  - 系统通知：Dashboard 触发日报后通过 SSE 监听执行进度，完成时发原生通知 + Toast
+- **影响范围:** 后端 2 文件 + 前端 6 文件

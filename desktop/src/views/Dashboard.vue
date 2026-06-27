@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report, type SystemStatus } from '../api/client'
 
 defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
@@ -11,6 +11,7 @@ const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
 const warnings = ref<string[]>([])
+let sseSource: EventSource | null = null
 
 async function loadAll() {
   try {
@@ -54,15 +55,56 @@ async function triggerReport() {
   reportLoading.value = true
   try {
     await api.triggerReport()
-    await loadAll()
+
+    // SSE 监听执行进度
+    sseSource = new EventSource('http://127.0.0.1:8001/admin/live-logs?key=dailybot-admin')
+    sseSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        const text = data.text || ''
+        if (text.includes('执行完毕') || text.includes('✅')) {
+          cleanupSSE()
+          reportLoading.value = false
+          props.showToast?.('日报生成完成', 'success')
+          window.electronAPI?.showNotification('DailyBot', '日报生成完成')
+          loadAll()
+        } else if ((text.includes('失败') || text.includes('❌')) && !text.includes('触发')) {
+          cleanupSSE()
+          reportLoading.value = false
+          props.showToast?.('日报生成失败，查看日志了解详情', 'error')
+          window.electronAPI?.showNotification('DailyBot', '日报生成失败')
+          loadAll()
+        }
+      } catch { /* 忽略 */ }
+    }
+    sseSource.onerror = () => {
+      cleanupSSE()
+      if (reportLoading.value) {
+        reportLoading.value = false
+        loadAll()
+      }
+    }
+    setTimeout(() => {
+      if (sseSource) {
+        cleanupSSE()
+        reportLoading.value = false
+      }
+    }, 30000)
   } catch (e: any) {
-    error.value = '触发失败: ' + (e.message || '未知错误')
-  } finally {
     reportLoading.value = false
+    error.value = '触发失败: ' + (e.message || '未知错误')
+  }
+}
+
+function cleanupSSE() {
+  if (sseSource) {
+    sseSource.close()
+    sseSource = null
   }
 }
 
 onMounted(loadAll)
+onBeforeUnmount(cleanupSSE)
 </script>
 
 <template>
