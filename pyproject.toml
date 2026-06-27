@@ -5,7 +5,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 [project]
 name = "dailybot-miao"
 version = "1.1.2"
-description = "小奕 - AI 驱动的日报自动化工具"
+description = "✨ 小奕 - AI 驱动的日报自动化工具"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
