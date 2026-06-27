@@ -1,9 +1,10 @@
 import {
-  app, BrowserWindow, shell, ipcMain, Tray, Menu, Notification, nativeImage,
+  app, BrowserWindow, shell, ipcMain, Tray, Menu, Notification, nativeImage, globalShortcut,
 } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { spawn, ChildProcess } from 'child_process'
 
 const require = createRequire(import.meta.url)
@@ -51,12 +52,11 @@ function startPythonBackend(): Promise<void> {
     pythonProcess = null
   })
 
-  // 等待后端就绪（健康检查轮询）
   return waitForBackend()
 }
 
 async function waitForBackend(): Promise<void> {
-  const maxRetries = 30  // 最多 30 秒
+  const maxRetries = 30
   for (let i = 0; i < maxRetries; i++) {
     try {
       const res = await fetch(`http://127.0.0.1:${PYTHON_PORT}/health`)
@@ -77,7 +77,38 @@ function stopPythonBackend() {
   }
 }
 
-// ── 系统托盘 ──────────────────────────────────
+// ── 窗口状态持久化 ──────────────────────────
+
+interface WindowState {
+  x?: number; y?: number
+  width: number; height: number
+  isMaximized: boolean
+}
+
+const STATE_PATH = path.join(app.getPath('userData'), 'window-state.json')
+
+function loadWindowState(): WindowState {
+  try {
+    if (fs.existsSync(STATE_PATH)) {
+      return JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'))
+    }
+  } catch { /* 忽略损坏文件 */ }
+  return { width: 1200, height: 800, isMaximized: false }
+}
+
+function saveWindowState(win: BrowserWindow) {
+  const isMaxed = win.isMaximized()
+  if (!isMaxed) {
+    const bounds = win.getBounds()
+    const state: WindowState = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, isMaximized: false }
+    try { fs.writeFileSync(STATE_PATH, JSON.stringify(state)) } catch { /* 忽略 */ }
+  } else {
+    const state: WindowState = { width: 1200, height: 800, isMaximized: true }
+    try { fs.writeFileSync(STATE_PATH, JSON.stringify(state)) } catch { /* 忽略 */ }
+  }
+}
+
+// ── 系统托盘 ──
 
 let tray: Tray | null = null
 
@@ -122,7 +153,20 @@ function createTray(mainWindow: BrowserWindow) {
   })
 }
 
-// ── 窗口管理 ──────────────────────────────────
+// ── 全局快捷键 ──────────────────────────
+
+function registerGlobalShortcuts(win: BrowserWindow) {
+  globalShortcut.register('CommandOrControl+Alt+D', () => {
+    if (win.isVisible()) {
+      win.hide()
+    } else {
+      win.show()
+      win.focus()
+    }
+  })
+}
+
+// ── 窗口管理 ──
 
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
@@ -131,16 +175,17 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 declare const app: Electron.App & { isQuitting?: boolean }
 
 async function createWindow() {
-  // Windows 11 acrylic 背景
+  const savedState = loadWindowState()
+
   const winOptions: Electron.BrowserWindowConstructorOptions = {
     title: 'DailyBot 小奕',
-    width: 1200,
-    height: 800,
+    width: savedState.width,
+    height: savedState.height,
     minWidth: 900,
     minHeight: 600,
     show: false,
-    frame: false,                // 无边框
-    transparent: true,           // 透明背景（玻璃效果需要）
+    frame: false,
+    transparent: true,
     webPreferences: {
       preload,
       contextIsolation: true,
@@ -148,24 +193,50 @@ async function createWindow() {
     },
   }
 
-  // Windows 11/10 acrylic 毛玻璃
+  // 恢复位置（如果有保存）
+  if (savedState.x !== undefined && savedState.y !== undefined) {
+    winOptions.x = savedState.x
+    winOptions.y = savedState.y
+  }
+
   if (process.platform === 'win32') {
     winOptions.backgroundMaterial = 'acrylic'
   }
 
   win = new BrowserWindow(winOptions)
 
-  // 窗口准备好后再显示
-  win.once('ready-to-show', () => {
-    win?.show()
-  })
+  // 恢复最大化状态
+  if (savedState.isMaximized) {
+    win.maximize()
+  }
+
+  // 开机自启 → 不显示窗口，只驻留托盘
+  if (app.getLoginItemSettings().wasOpenedAtLogin) {
+    win.once('ready-to-show', () => {
+      // 不调用 win.show()，保持隐藏
+    })
+  } else {
+    win.once('ready-to-show', () => {
+      win?.show()
+    })
+  }
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
   } else {
     win.loadFile(indexHtml)
   }
+
+  // 保存窗口状态
+  win.on('close', () => {
+    if (win) saveWindowState(win)
+  })
+  win.on('resize', () => {
+    if (win) saveWindowState(win)
+  })
+  win.on('move', () => {
+    if (win) saveWindowState(win)
+  })
 
   // 关闭按钮 → 隐藏到托盘
   win.on('close', (event) => {
@@ -190,7 +261,7 @@ async function createWindow() {
   })
 }
 
-// ── IPC 处理 ──────────────────────────────────
+// ── IPC 处理 ──
 
 ipcMain.handle('window-minimize', () => { win?.minimize() })
 ipcMain.handle('window-maximize', () => {
@@ -208,13 +279,15 @@ ipcMain.handle('get-auto-launch', () => {
   return app.getLoginItemSettings().openAtLogin
 })
 
-// ── 应用生命周期 ──────────────────────────────
+// ── 应用生命周期 ──
 
 app.whenReady().then(async () => {
   await startPythonBackend()
   createWindow()
-  // 窗口创建后再创建托盘（等一段让 DOM 也准备）
-  if (win) createTray(win)
+  if (win) {
+    createTray(win)
+    registerGlobalShortcuts(win)
+  }
 })
 
 app.on('window-all-closed', () => {
@@ -222,6 +295,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  globalShortcut.unregisterAll()
   (app as any).isQuitting = true
   stopPythonBackend()
 })

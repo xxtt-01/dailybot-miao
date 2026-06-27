@@ -10,6 +10,7 @@ const reports = ref<Report[]>([])
 const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
+const warnings = ref<string[]>([])
 
 async function loadAll() {
   try {
@@ -24,6 +25,25 @@ async function loadAll() {
       const res = await api.getReports(today).catch(() => null)
       reports.value = (res?.reports || []).slice(0, 7)
     }
+
+    // 环境配置自检
+    const cfg = await api.getConfig().catch(() => null)
+    const warns: string[] = []
+    if (cfg) {
+      if (!cfg.crawler_sources || Object.keys(cfg.crawler_sources).length === 0) {
+        warns.push('未配置采集源，请前往「采集源」添加仓库')
+      }
+      if (!cfg.providers || Object.keys(cfg.providers).length === 0) {
+        warns.push('未配置 AI 供应商，请检查 config.yaml')
+      }
+      if (!cfg.workflows?.feishu?.webhook_url && !cfg.workflows?.feishu?.app_id) {
+        warns.push('未配置飞书推送，日报生成后不会推送消息')
+      }
+    }
+    if (!st) {
+      warns.push('后端服务未连接，部分功能不可用')
+    }
+    warnings.value = warns
   } catch {
     error.value = '无法连接后端服务'
   }
@@ -59,6 +79,14 @@ onMounted(loadAll)
     <div v-if="versionInfo?.has_update" class="update-banner glass-card fade-in">
       <span>📦 新版本 {{ versionInfo.latest_version }} 可用</span>
       <a :href="versionInfo.download_url" class="btn btn-ghost" target="_blank">下载</a>
+    </div>
+
+    <!-- 环境警告 -->
+    <div v-if="warnings.length > 0" class="warnings-section">
+      <div v-for="(w, i) in warnings" :key="i" class="warning-item glass-card fade-in">
+        <span class="tag tag-warning">注意</span>
+        <span>{{ w }}</span>
+      </div>
     </div>
 
     <!-- 骨架屏 -->
@@ -137,6 +165,9 @@ onMounted(loadAll)
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .update-banner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2); margin-bottom: var(--space-3); border-left: 3px solid var(--accent); }
+
+.warnings-section { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
+.warning-item { display: flex; align-items: center; gap: var(--space-2); padding: 10px 14px; border-left: 3px solid var(--warning); font-size: 12px; }
 .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
 @media (max-width: 900px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
 

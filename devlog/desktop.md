@@ -92,3 +92,17 @@
   - Vue 前端通过 REST API 与后端通信，Python 代码零改动
   - UI 风格采用深色玻璃拟态（参考 Token Monitor 风格体系）
 - **影响范围:** 新增 desktop/ 独立子项目，不影响现有 Python 代码
+
+## 2026-06-27: Sprint 1 — 日常体验提升（窗口持久化/托盘/快捷键/自检）
+- **文件:**
+  - `desktop/electron/main/index.ts`
+  - `desktop/src/App.vue`
+  - `desktop/src/views/Dashboard.vue`
+- **原因:** 桌面版功能基本完成后，需要优化日常使用体验
+- **决策:**
+  - 窗口位置/大小持久化：关闭时自动保存 bounds 到 `userData/window-state.json`，启动时恢复
+  - 开机自启到托盘：检测 `wasOpenedAtLogin`，自启时不弹窗口只驻留托盘
+  - 全局快捷键：`Ctrl+Alt+D` 呼出/隐藏窗口
+  - 键盘导航：数字键 1-8 切换页面，`Ctrl+E` 快速执行日报
+  - 环境自检：Dashboard 加载时检测配置完整性，显示缺失警告 banner
+- **影响范围:** Electron 主进程、App 布局、Dashboard 概览页

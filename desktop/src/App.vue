@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api } from './api/client'
 import TitleBar from './components/TitleBar.vue'
 import Toast from './components/Toast.vue'
@@ -36,6 +36,27 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'info')
   toastRef.value?.add(message, type)
 }
 
+// 键盘快捷键
+const tabKeys = ['dashboard', 'reports', 'logs', 'config', 'stats', 'camouflage', 'sources', 'scheduler']
+
+function onKeydown(e: KeyboardEvent) {
+  // 1-8 切换页面
+  if (e.key >= '1' && e.key <= '8') {
+    const idx = parseInt(e.key) - 1
+    if (!e.ctrlKey && !e.metaKey) {
+      switchTab(tabKeys[idx])
+      return
+    }
+  }
+  // Ctrl+E 立即执行日报
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+    e.preventDefault()
+    api.triggerReport()
+      .then(() => showToast('日报生成任务已提交', 'success'))
+      .catch(() => showToast('触发失败：后端未连接', 'error'))
+  }
+}
+
 onMounted(async () => {
   try {
     const st = await api.getStatus()
@@ -44,6 +65,11 @@ onMounted(async () => {
     const v = await api.getDesktopVersion()
     hasUpdate.value = v.has_update
   } catch { statusInfo.value = '后端未连接' }
+  window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -79,6 +105,9 @@ onMounted(async () => {
           </div>
           <div class="footer-row footer-actions">
             <ThemeSwitcher />
+          </div>
+          <div class="footer-row shortcut-hint text-dim text-sm">
+            <span>1-8 切换 · Ctrl+E 执行 · Ctrl+Alt+D 呼出</span>
           </div>
         </div>
       </aside>
@@ -175,6 +204,7 @@ onMounted(async () => {
 .footer-row { display: flex; align-items: center; gap: 8px; }
 .footer-actions { justify-content: flex-end; }
 .footer-status { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shortcut-hint { opacity: 0.45; font-size: 10px; line-height: 1.4; text-align: center; justify-content: center; }
 
 /* ── 内容区 ── */
 .main-content {
