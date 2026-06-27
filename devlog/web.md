@@ -1,5 +1,12 @@
 # web 模块日志
 
+## 2026-06-27: 桌面版本地请求跳过鉴权
+- **文件:**
+  - `web/routes.py`
+- **原因:** 桌面版 client.ts 之前硬编码 admin key，审查发现存在安全隐患
+- **决策:** verify_admin_key 增加 `X-Desktop-Client` 头部检查，桌面版本地请求跳过 key 验证
+- **影响范围:** 桌面版 API 鉴权方式
+
 ## 2026-06-27: 新增桌面版 API（live-logs / desktop-version / exit / config POST）
 - **文件:**
   - `web/routes.py`

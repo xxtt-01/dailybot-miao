@@ -4,24 +4,18 @@ import { ref, onMounted } from 'vue'
 
 const isMaximized = ref(false)
 
-declare const windowControls: {
-  minimize: () => void
-  maximize: () => void
-  close: () => void
-  isMaximized: () => Promise<boolean>
-  onMaximizeChange: (cb: (m: boolean) => void) => void
-}
+const wc = window.windowControls
 
 onMounted(async () => {
   try {
-    isMaximized.value = await windowControls.isMaximized()
-    windowControls.onMaximizeChange((m) => { isMaximized.value = m })
+    isMaximized.value = await wc.isMaximized()
+    wc.onMaximizeChange((m) => { isMaximized.value = m })
   } catch { /* Electron 外运行忽略 */ }
 })
 
-function minimize() { windowControls.minimize() }
-function maximize() { windowControls.maximize() }
-function closeWin() { windowControls.close() }
+function minimize() { wc.minimize() }
+function maximize() { wc.maximize() }
+function closeWin() { wc.close() }
 </script>
 
 <template>

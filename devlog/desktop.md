@@ -1,5 +1,17 @@
 # desktop 模块日志
 
+## 2026-06-27: 审查修复 — API key 硬编码 + 健康检查 + 类型声明
+- **文件:**
+  - `desktop/src/api/client.ts`
+  - `desktop/electron/main/index.ts`
+  - `desktop/src/components/TitleBar.vue`
+  - `desktop/src/vite-env.d.ts`
+- **修复内容:**
+  - 去掉 client.ts 中硬编码的 `key=dailybot-admin`，改用 `X-Desktop-Client` 头部
+  - 后端 verify_admin_key 识别该头部后跳过本地鉴权
+  - Electron 主进程启动后轮询 `/health` 确认后端就绪再创建窗口
+  - 补充 TypeScript 类型声明，windowControls / electronAPI 挂载到 Window 接口
+
 ## 2026-06-27: 主题色选择 + 排版现代化
 - **文件:**
   - `desktop/src/styles/main.css`

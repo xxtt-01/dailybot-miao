@@ -1,5 +1,11 @@
 # 杂项日志
 
+## 2026-06-27: pyproject.toml 补回 emoji
+- **文件:**
+  - `pyproject.toml`
+- **原因:** 上次更新丢失了 emoji 符号
+- **决策:** 补回 ✨，description 改为 "✨ 小奕 - AI 驱动的日报自动化工具"
+
 ## 2026-06-27: 新增 serve.py 纯 Web 服务模式入口
 - **文件:**
   - `serve.py`
