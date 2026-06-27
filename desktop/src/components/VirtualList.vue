@@ -71,6 +71,7 @@ onBeforeUnmount(() => {
 .virtual-container {
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   contain: strict;
 }
 .virtual-spacer {
