@@ -111,6 +111,31 @@ async function pushDraft(r: Report) {
   }
 }
 
+function exportCSV() {
+  if (reports.value.length === 0) {
+    props.showToast?.('没有可导出的数据', 'info')
+    return
+  }
+  const headers = ['日期', '平台', '类型', '状态', '摘要', '创建时间']
+  const rows = reports.value.map(r => [
+    r.date,
+    r.platform,
+    r.is_camouflage ? '伪装' : '正常',
+    r.pushed ? '已推送' : '待推送',
+    `"${(r.summary || '').replace(/"/g, '""')}"`,
+    r.created_at || '',
+  ])
+  const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `日报_${dateFilter.value || '全部'}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  props.showToast?.('CSV 已导出', 'success')
+}
+
 // ── 键盘 ──
 
 function onKeydown(e: KeyboardEvent) {
