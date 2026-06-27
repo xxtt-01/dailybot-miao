@@ -312,6 +312,50 @@ function stopWatchdog() {
   }
 }
 
+// ── 定期自维护（每 24 小时） ──────────────────────────
+
+let maintenanceTimer: ReturnType<typeof setInterval> | null = null
+
+async function runMaintenance() {
+  console.log('[维护] 开始 24 小时定期维护...')
+  try {
+    // 1. 触发后端 VACUUM + 清理
+    const res = await fetch(`http://127.0.0.1:${PYTHON_PORT}/admin/maintenance/auto`, {
+      method: 'POST',
+      headers: { 'X-Desktop-Client': 'true' },
+    })
+    const data = await res.json()
+    console.log(`[维护] 后端维护完成: ${data.message}`)
+  } catch (e) {
+    console.warn(`[维护] 后端维护失败（下次重试）: ${e}`)
+  }
+
+  try {
+    // 2. 清理 Electron 渲染进程缓存
+    if (win) {
+      win.webContents.session.clearCache()
+      console.log('[维护] 渲染进程缓存已清理')
+    }
+  } catch (e) {
+    console.warn(`[维护] 缓存清理失败: ${e}`)
+  }
+}
+
+function startMaintenanceTimer() {
+  // 启动后先等 1 小时再首次执行（给应用稳定时间）
+  setTimeout(() => {
+    runMaintenance()
+    maintenanceTimer = setInterval(runMaintenance, 24 * 60 * 60 * 1000)
+  }, 60 * 60 * 1000)
+}
+
+function stopMaintenanceTimer() {
+  if (maintenanceTimer) {
+    clearInterval(maintenanceTimer)
+    maintenanceTimer = null
+  }
+}
+
 // ── 应用生命周期 ──
 
 app.whenReady().then(async () => {
@@ -322,6 +366,7 @@ app.whenReady().then(async () => {
     registerGlobalShortcuts(win)
   }
   startWatchdog()
+  startMaintenanceTimer()
 })
 
 app.on('window-all-closed', () => {
@@ -329,6 +374,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  stopMaintenanceTimer()
   stopWatchdog()
   globalShortcut.unregisterAll()
   (app as any).isQuitting = true

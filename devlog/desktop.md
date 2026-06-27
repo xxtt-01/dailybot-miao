@@ -189,6 +189,18 @@
   - 进程退出或无响应时自动重启，并弹出系统通知告知用户
 - **影响范围:** Electron 主进程
 
+## 2026-06-28: 7×24 长期运行优化 — SQLite 自动维护 + Electron 缓存清理
+- **文件:**
+  - `common/database.py`
+  - `web/routes.py`
+  - `desktop/electron/main/index.ts`
+  - `desktop/src/api/client.ts`
+- **决策:**
+  - 后端新增 `vacuum()` 方法回收 SQLite 空间，`POST /admin/maintenance/auto` 统一入口执行 VACUUM + 清理 90 天前数据
+  - Electron 主进程新增 24h 定期维护定时器：启动后等 1h 首次执行，后续每 24h 触发后端维护 + 清理渲染进程缓存
+  - 全部 5 个含定时器/SSE/监听的组件均已审计确认正确实现 `onBeforeUnmount` 清理
+- **影响范围:** 后端 2 文件 + 前端 2 文件
+
 ## 2026-06-28: Sprint 5 — 日报编辑推送工作流
 - **文件:**
   - `common/database.py`
