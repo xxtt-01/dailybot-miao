@@ -232,8 +232,18 @@ async def run_reporting_logic():
             )
 
             log.info(f"🚀 [推送] 正在推送到平台: {wf.WORKFLOW_NAME}")
-            await wf.on_report_success(summary, ctx)
-            log.info(f"✅ [推送] 平台 {wf.WORKFLOW_NAME} 通知已发送")
+
+            # 检查是否启用自动推送，默认 true
+            platform_config = config.get_platform(wf.WORKFLOW_NAME)
+            auto_push = platform_config.get("auto_push", True)
+
+            if auto_push:
+                await wf.on_report_success(summary, ctx)
+                log.info(f"✅ [推送] 平台 {wf.WORKFLOW_NAME} 通知已发送")
+                pushed = 1
+            else:
+                log.info(f"📝 [草稿] 平台 {wf.WORKFLOW_NAME} 自动推送已关闭，保存为草稿")
+                pushed = 0
 
             try:
                 db.save_report(
@@ -242,6 +252,7 @@ async def run_reporting_logic():
                     summary=summary,
                     raw_data=ctx.get("raw_report", "") if isinstance(ctx, dict) else "",
                     is_camouflage=bool(is_camouflage),
+                    pushed=pushed,
                 )
                 db.log_run(
                     date=datetime.now().strftime("%Y-%m-%d"),

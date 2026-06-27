@@ -137,4 +137,13 @@ export const api = {
   getDesktopVersion: () => request<VersionInfo>('/admin/desktop-version'),
   cleanupData: (days = 30) =>
     request<{ success: boolean; message: string; details: any }>(`/admin/maintenance/cleanup?days=${days}`, { method: 'POST' }),
+  getDrafts: () => request<{ drafts: Report[]; count: number }>('/admin/reports/drafts'),
+  updateReport: (id: number, summary: string) =>
+    request<{ success: boolean; message: string }>(`/admin/reports/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary }),
+    }),
+  pushReport: (id: number) =>
+    request<{ success: boolean; message: string }>(`/admin/reports/${id}/push`, { method: 'POST' }),
 }

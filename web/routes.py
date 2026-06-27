@@ -178,6 +178,50 @@ async def get_reports_summary(start: str = Query(...), end: str = Query(...)):
     }
 
 
+@router.get("/reports/drafts")
+async def get_drafts():
+    """获取所有未推送的日报草稿"""
+    drafts = db.get_unpushed_reports(50)
+    return {"drafts": drafts, "count": len(drafts)}
+
+
+@router.put("/reports/{report_id}")
+async def update_report(report_id: int, data: dict):
+    """更新草稿日报的摘要内容"""
+    report = db.get_report_by_id(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    summary = data.get("summary")
+    if not summary:
+        raise HTTPException(status_code=400, detail="summary 必填")
+    db.update_report_summary(report_id, summary)
+    return {"success": True, "message": "已更新"}
+
+
+@router.post("/reports/{report_id}/push")
+async def push_report(report_id: int):
+    """手动推送草稿日报到飞书"""
+    report = db.get_report_by_id(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    if report.get("pushed"):
+        return {"success": True, "message": "该日报已推送过"}
+
+    # 重新推送
+    try:
+        from workflows import WorkflowFactory
+        wf = WorkflowFactory.get_workflow(report["platform"])
+        if not wf:
+            raise HTTPException(status_code=400, detail=f"未找到平台 {report['platform']} 的工作流")
+        await wf.on_report_success(report["summary"], {"raw_report": report.get("raw_data", "")})
+        db.set_report_pushed(report_id)
+        logger.info(f"✅ [手动推送] 日报 {report_id} 已推送到 {report['platform']}")
+        return {"success": True, "message": "推送成功"}
+    except Exception as e:
+        logger.error(f"❌ [手动推送] 日报 {report_id} 推送失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/stats/trend")
 async def get_stats_trend(days: int = Query(7, ge=1, le=90)):
     data = db.get_report_trend(days)
