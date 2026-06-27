@@ -9,6 +9,9 @@ const loading = ref(true)
 const error = ref('')
 const installing = ref(false)
 const uninstalling = ref(false)
+const cleanupDays = ref(30)
+const cleanupResult = ref<string>('')
+const cleanupLoading = ref(false)
 
 async function loadData() {
   loading.value = true
@@ -65,6 +68,26 @@ async function uninstallAll() {
     props.showToast?.('卸载失败: ' + (e.message || '未知错误'), 'error')
   } finally {
     uninstalling.value = false
+  }
+}
+
+async function runCleanup() {
+  if (!confirm(`确定要清理 ${cleanupDays.value} 天前的数据吗？此操作不可恢复。`)) return
+  cleanupLoading.value = true
+  cleanupResult.value = ''
+  try {
+    const res = await api.cleanupData(cleanupDays.value)
+    if (res.success) {
+      const d = res.details
+      cleanupResult.value = `已清理：${d.reports_deleted} 条日报、${d.logs_deleted} 条日志、${d.camouflage_deleted} 条伪装素材`
+      props.showToast?.('数据清理完成', 'success')
+    } else {
+      props.showToast?.('清理失败', 'error')
+    }
+  } catch (e: any) {
+    props.showToast?.('清理失败: ' + (e.message || '未知错误'), 'error')
+  } finally {
+    cleanupLoading.value = false
   }
 }
 
@@ -131,6 +154,38 @@ onMounted(loadData)
           </div>
         </div>
       </div>
+
+      <!-- 数据清理 -->
+      <div class="section">
+        <h3 class="section-title text-dim">数据维护</h3>
+        <div class="glass-card cleanup-card">
+          <div class="cleanup-row">
+            <div class="cleanup-info">
+              <span class="text-dim">清理历史数据</span>
+              <span class="text-dim text-sm">删除指定天数前的日报和日志记录（不可恢复）</span>
+            </div>
+            <div class="cleanup-form">
+              <label class="cleanup-label text-dim text-sm">
+                保留
+                <select v-model.number="cleanupDays" class="cleanup-select">
+                  <option :value="7">7天</option>
+                  <option :value="30">30天</option>
+                  <option :value="90">90天</option>
+                  <option :value="180">180天</option>
+                </select>
+                前的数据
+              </label>
+              <button class="btn btn-danger" :disabled="cleanupLoading" @click="runCleanup">
+                {{ cleanupLoading ? '清理中...' : '执行清理' }}
+              </button>
+            </div>
+          </div>
+          <div v-if="cleanupResult" class="cleanup-result fade-in">
+            <span class="tag tag-success">完成</span>
+            <span>{{ cleanupResult }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -153,4 +208,12 @@ onMounted(loadData)
 .task-item { display: flex; align-items: center; gap: var(--space-2); padding: 6px 14px; }
 .task-icon { color: var(--accent); }
 .task-name { font-size: 12px; }
+
+.cleanup-card { padding: var(--space-2); }
+.cleanup-row { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; }
+.cleanup-info { display: flex; flex-direction: column; gap: 2px; }
+.cleanup-form { display: flex; align-items: center; gap: var(--space-2); }
+.cleanup-label { display: flex; align-items: center; gap: var(--space-1); }
+.cleanup-select { width: 64px; padding: 4px 6px; font-size: 11px; }
+.cleanup-result { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font-size: 12px; }
 </style>

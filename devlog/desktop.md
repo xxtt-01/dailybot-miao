@@ -127,3 +127,16 @@
   - 多平台对比：后端新增 `get_platform_trend` 方法 + 路由 + Stats.vue 堆叠柱状图
   - 系统通知：Dashboard 触发日报后通过 SSE 监听执行进度，完成时发原生通知 + Toast
 - **影响范围:** 后端 2 文件 + 前端 6 文件
+
+## 2026-06-27: Sprint 3 — 数据归档与清理
+- **文件:**
+  - `common/database.py`
+  - `web/routes.py`
+  - `desktop/src/api/client.ts`
+  - `desktop/src/views/Scheduler.vue`
+- **原因:** 数据库无限增长需要清理策略
+- **决策:**
+  - 后端新增 `cleanup_old_records(days)` 方法，支持按天数清理日报/日志/伪装历史
+  - 后端新增 `POST /admin/maintenance/cleanup` 接口
+  - 前端 Scheduler 页面增加"数据维护"卡片，可选 7/30/90/180 天保留策略
+- **影响范围:** 后端 2 文件 + 前端 2 文件

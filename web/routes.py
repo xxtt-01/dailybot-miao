@@ -410,3 +410,10 @@ async def shutdown_backend():
 
     asyncio.create_task(_shutdown())
     return {"message": "服务即将关闭"}
+
+
+@router.post("/maintenance/cleanup")
+async def cleanup_data(days: int = Query(30, ge=7, le=365)):
+    """清理指定天数前的历史数据"""
+    result = db.cleanup_old_records(days)
+    return {"success": True, "message": f"已清理 {days} 天前的数据", "details": result}
