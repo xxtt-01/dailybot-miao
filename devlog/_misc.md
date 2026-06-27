@@ -1,5 +1,12 @@
 # 杂项日志
 
+## 2026-06-27: 新增 serve.py 纯 Web 服务模式入口
+- **文件:**
+  - `serve.py`
+- **原因:** 桌面版（Electron）需要将 Python 后端作为子进程启动，现有的 main.py 执行完整日报流程不适合作为常驻服务
+- **决策:** 新建 serve.py，只启动 FastAPI + 管理面板，不触发日报逻辑；由 Electron 主进程管理生命周期
+- **影响范围:** Electron 桌面版的子进程启动方式
+
 ## 2026-06-27: 更新 pyproject.toml 项目描述
 - **文件:**
   - `pyproject.toml`

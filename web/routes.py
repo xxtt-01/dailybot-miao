@@ -1,13 +1,15 @@
 """DailyBot Web 管理面板 - FastAPI 路由"""
 import asyncio
+import json
 import os
+import signal
 import traceback
 import yaml
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Query, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 
 from common import config
@@ -261,3 +263,94 @@ async def uninstall_scheduler():
     dummy_log = logging.getLogger("scheduler_api")
     remove_all_tasks(dummy_log)
     return {"success": True, "message": "已卸载所有定时任务"}
+
+
+# ── 桌面版专用 API ──────────────────────────────────────
+
+
+# SSE 实时日志流：全局队列，trigger 时注册 loguru sink
+_live_log_queue: Optional[asyncio.Queue] = None
+
+
+def _push_log_to_queue(message):
+    """loguru sink 回调：向 SSE 队列推送日志"""
+    q = _live_log_queue
+    if q is not None:
+        try:
+            q.put_nowait(message)
+        except asyncio.QueueFull:
+            pass
+
+
+@router.post("/config")
+async def update_config(data: dict):
+    """更新配置（桌面版配置编辑用）"""
+    try:
+        _write_config_yaml(data)
+        config.reload()
+        return {"success": True, "message": "配置已更新"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/desktop-version")
+async def check_desktop_version():
+    """检查当前版本与 GitHub 最新版（桌面版更新提示用）"""
+    current = getattr(config, "VERSION", "1.1.2")
+    latest = current
+    download_url = ""
+    try:
+        import httpx
+        resp = httpx.get(
+            "https://api.github.com/repos/xxtt-01/daily-bot/releases/latest",
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            latest = data.get("tag_name", "").lstrip("v") or current
+            download_url = data.get("html_url", "")
+    except Exception:
+        pass
+    return {
+        "current_version": current,
+        "latest_version": latest,
+        "has_update": latest != current,
+        "download_url": download_url,
+    }
+
+
+@router.get("/live-logs")
+async def stream_live_logs():
+    """SSE 实时日志流（桌面版执行日报时展示日志用）"""
+    global _live_log_queue
+    _live_log_queue = asyncio.Queue(maxsize=500)
+
+    # 注册 loguru sink
+    sink_id = logger.add(_push_log_to_queue, format="{time:HH:mm:ss} | {level} | {message}", level="INFO")
+
+    async def event_generator():
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(_live_log_queue.get(), timeout=30)
+                    yield f"data: {json.dumps({'text': msg}, ensure_ascii=False)}\n\n"
+                except asyncio.TimeoutError:
+                    yield f"data: {json.dumps({'text': 'heartbeat'}, ensure_ascii=False)}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            logger.remove(sink_id)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/exit")
+async def shutdown_backend():
+    """关闭后端服务（桌面版退出时调用）"""
+    async def _shutdown():
+        await asyncio.sleep(0.3)
+        logger.info("🛑 收到关闭信号，服务即将退出")
+        os.kill(os.getpid(), signal.SIGINT)
+
+    asyncio.create_task(_shutdown())
+    return {"message": "服务即将关闭"}

@@ -1,5 +1,12 @@
 # web 模块日志
 
+## 2026-06-27: 新增桌面版 API（live-logs / desktop-version / exit / config POST）
+- **文件:**
+  - `web/routes.py`
+- **原因:** 桌面版（Electron）需要实时日志流、版本更新检查、服务关闭通知、配置在线编辑等专用端点
+- **决策:** 新增 4 个 API，其中 live-logs 使用 SSE 推送机制 + loguru sink 捕获实时日志，exit 用异步延迟关闭
+- **影响范围:** 桌面版前端可调用的 API 集合
+
 ## 2026-06-27: 修复 Dashboard "日报喵" 标题和图标残留
 - **文件:**
   - `web/static/dashboard.html`

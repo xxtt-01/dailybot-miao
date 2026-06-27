@@ -17,4 +17,8 @@
 | **调度器 (Scheduler)** | Windows 定时任务，控制日报自动执行的时间和频率 |
 | **MCP** | Model Context Protocol，使 DailyBot 可作为工具接入 AI 客户端 |
 | **OAuth Nudge** | Token 过期时自动向飞书发送授权引导卡片，点击即完成授权 |
+| **桌面版 (Desktop App)** | Electron + Vue 3 封装的桌面应用程序，替代原有的 Web 管理面板 |
+| **后端服务 (Backend Service)** | Python FastAPI 进程，由 Electron 子进程管理，提供 REST API |
+| **系统托盘 (System Tray)** | 桌面版最小化后常驻系统托盘，右键菜单可执行操作 |
+| **实时日志 (Live Log)** | 桌面版执行日报时在界面内实时显示日志流 |
 
