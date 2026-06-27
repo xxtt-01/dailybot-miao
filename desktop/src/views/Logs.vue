@@ -6,13 +6,14 @@ const logs = ref<RunLog[]>([])
 const loading = ref(true)
 const error = ref('')
 const refreshing = ref(false)
+const searchQuery = ref('')
 const listRef = ref<HTMLElement | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadLogs() {
   if (!loading.value) refreshing.value = true
   try {
-    const res = await api.getLogs(100)
+    const res = await api.getLogs(100, searchQuery.value || undefined)
     logs.value = res.logs || []
     error.value = ''
   } catch (e: any) {
@@ -46,6 +47,9 @@ onBeforeUnmount(() => {
     <div class="page-header">
       <h2>运行日志</h2>
       <div class="header-right">
+        <label class="search-box">
+          <input type="text" v-model="searchQuery" placeholder="搜索日志…" @change="loadLogs" class="search-input" />
+        </label>
         <span class="auto-refresh-hint" :class="{ active: !loading }">
           <span class="refresh-dot"></span>
           自动刷新
@@ -97,6 +101,8 @@ onBeforeUnmount(() => {
   opacity: 0.4; transition: var(--transition-fast);
 }
 .auto-refresh-hint.active .refresh-dot { opacity: 1; animation: pulse 2s infinite; }
+.search-box { display: flex; }
+.search-input { width: 140px; font-size: 11px; padding: 4px 8px; }
 
 .loading-state { padding: var(--space-2); }
 

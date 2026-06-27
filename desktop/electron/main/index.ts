@@ -279,6 +279,10 @@ ipcMain.handle('get-auto-launch', () => {
   return app.getLoginItemSettings().openAtLogin
 })
 
+ipcMain.handle('show-notification', (_event, title: string, body: string) => {
+  new Notification({ title, body }).show()
+})
+
 // ── 应用生命周期 ──
 
 app.whenReady().then(async () => {

@@ -91,20 +91,27 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
-  getReports: (date?: string, platform?: string) => {
+  getReports: (date?: string, platform?: string, search?: string) => {
     let path = '/admin/reports?limit=50'
     if (date) path += `&date=${date}`
     if (platform) path += `&platform=${platform}`
+    if (search) path += `&search=${encodeURIComponent(search)}`
     return request<{ date: string; reports: Report[]; count: number }>(path)
   },
   getReportDetail: (id: number) =>
     request<{ report: Report }>(`/admin/reports/detail?id=${id}`),
-  getLogs: (limit = 100) =>
-    request<{ logs: RunLog[]; count: number }>(`/admin/logs?limit=${limit}`),
+  getLogs: (limit = 100, search?: string) => {
+    let path = `/admin/logs?limit=${limit}`
+    if (search) path += `&search=${encodeURIComponent(search)}`
+    return request<{ logs: RunLog[]; count: number }>(path)
+  },
   triggerReport: () =>
     request<{ message: string; status: string }>('/admin/trigger', { method: 'POST' }),
   getTrend: (days = 7) => request<TrendData>(`/admin/stats/trend?days=${days}`),
   getPlatformStats: () => request<{ platforms: PlatformStat[] }>('/admin/stats/platform'),
+  getPlatformTrend: (days = 7) => request<{ days: string[]; platforms: Record<string, number[]> }>(`/admin/stats/platform-trend?days=${days}`),
+  getReportSummary: (start: string, end: string) =>
+    request<{ start: string; end: string; total: number; by_platform: Record<string, { count: number }>; by_type: { normal: number; camouflage: number }; reports: any[] }>(`/admin/reports/summary?start=${start}&end=${end}`),
   getCamouflage: () => request<{ items: CamouflageItem[] }>('/admin/camouflage'),
   deleteCamouflage: (id: string) =>
     request<{ success: boolean }>(`/admin/camouflage/${id}`, { method: 'DELETE' }),

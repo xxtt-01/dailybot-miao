@@ -6,6 +6,7 @@ const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' 
 
 const dateFilter = ref(new Date().toISOString().slice(0, 10))
 const platformFilter = ref('')
+const searchQuery = ref('')
 const reports = ref<Report[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -16,7 +17,7 @@ async function loadReports() {
   loading.value = true
   error.value = ''
   try {
-    const res = await api.getReports(dateFilter.value || undefined, platformFilter.value || undefined)
+    const res = await api.getReports(dateFilter.value || undefined, platformFilter.value || undefined, searchQuery.value || undefined)
     reports.value = res.reports || []
   } catch (e: any) {
     error.value = '获取日报列表失败: ' + (e.message || '未知错误')
@@ -47,6 +48,30 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+function exportCSV() {
+  if (reports.value.length === 0) {
+    props.showToast?.('没有可导出的数据', 'info')
+    return
+  }
+  const headers = ['日期', '平台', '类型', '摘要', '创建时间']
+  const rows = reports.value.map(r => [
+    r.date,
+    r.platform,
+    r.is_camouflage ? '伪装' : '正常',
+    `"${(r.summary || '').replace(/"/g, '""')}"`,
+    r.created_at || '',
+  ])
+  const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `日报_${dateFilter.value || '全部'}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  props.showToast?.('CSV 已导出', 'success')
+}
+
 onMounted(() => {
   loadReports()
   window.addEventListener('keydown', onKeydown)
@@ -66,8 +91,15 @@ onMounted(() => {
           <span class="text-dim text-sm">平台</span>
           <input type="text" v-model="platformFilter" placeholder="全部" @change="loadReports" />
         </label>
+        <label class="filter-item">
+          <span class="text-dim text-sm">搜索</span>
+          <input type="text" v-model="searchQuery" placeholder="关键词…" @change="loadReports" />
+        </label>
         <button class="btn btn-ghost" @click="loadReports" :disabled="loading">
           {{ loading ? '加载中...' : '刷新' }}
+        </button>
+        <button class="btn btn-ghost" @click="exportCSV" :disabled="reports.length === 0">
+          导出 CSV
         </button>
       </div>
     </div>

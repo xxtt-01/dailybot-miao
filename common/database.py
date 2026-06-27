@@ -62,12 +62,19 @@ class Database:
                 (date, platform, summary, raw_data, int(is_camouflage)),
             )
 
-    def get_reports(self, date, platform=None, limit=10):
+    def get_reports(self, date, platform=None, limit=10, search=None):
         with self._get_conn() as conn:
+            sql = "SELECT * FROM daily_reports WHERE date=?"
+            params = [date]
             if platform:
-                rows = conn.execute("SELECT * FROM daily_reports WHERE date=? AND platform=? ORDER BY created_at DESC LIMIT ?", (date, platform, limit)).fetchall()
-            else:
-                rows = conn.execute("SELECT * FROM daily_reports WHERE date=? ORDER BY created_at DESC LIMIT ?", (date, limit)).fetchall()
+                sql += " AND platform=?"
+                params.append(platform)
+            if search:
+                sql += " AND (summary LIKE ? OR raw_data LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%"])
+            sql += " ORDER BY created_at DESC LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(sql, params).fetchall()
             return [dict(r) for r in rows]
 
     def get_reports_by_date_range(self, start_date, end_date, limit=100):
@@ -79,15 +86,31 @@ class Database:
         with self._get_conn() as conn:
             conn.execute("INSERT INTO run_logs (date, platform, status, message) VALUES (?, ?, ?, ?)", (date, platform, status, message))
 
-    def get_run_logs(self, limit=50):
+    def get_run_logs(self, limit=50, search=None):
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM run_logs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            sql = "SELECT * FROM run_logs"
+            params = []
+            if search:
+                sql += " WHERE message LIKE ? OR platform LIKE ?"
+                params.extend([f"%{search}%", f"%{search}%"])
+            sql += " ORDER BY created_at DESC LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(sql, params).fetchall()
             return [dict(r) for r in rows]
 
     def get_report_trend(self, days: int = 7):
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT date, COUNT(*) as cnt FROM daily_reports WHERE date >= date('now', ?) GROUP BY date ORDER BY date",
+                (f"-{days} days",)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_platform_trend(self, days: int = 7):
+        """获取各平台每日报告数（多平台对比用）"""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT date, platform, COUNT(*) as cnt FROM daily_reports WHERE date >= date('now', ?) GROUP BY date, platform ORDER BY date, platform",
                 (f"-{days} days",)
             ).fetchall()
             return [dict(r) for r in rows]
