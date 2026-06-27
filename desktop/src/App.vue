@@ -12,6 +12,8 @@ import Stats from './views/Stats.vue'
 import Camouflage from './views/Camouflage.vue'
 import Sources from './views/Sources.vue'
 import Scheduler from './views/Scheduler.vue'
+import NotificationPanel from './components/NotificationPanel.vue'
+import AiAssistant from './components/AiAssistant.vue'
 
 const currentTab = ref('dashboard')
 const statusInfo = ref('')
@@ -19,6 +21,10 @@ const versionStr = ref('')
 const hasUpdate = ref(false)
 const showShortcuts = ref(false)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+const showNotificationPanel = ref(false)
+const showAiAssistant = ref(false)
+const unreadCount = ref(0)
+let notifTimer: ReturnType<typeof setInterval> | null = null
 
 const tabs = [
   { key: 'dashboard',  label: '概览',  icon: '◉' },
@@ -38,6 +44,13 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'info')
 }
 
 function navigateTo(tab: string) { switchTab(tab) }
+
+async function checkUnread() {
+  try {
+    const res = await api.getNotifications(1, true)
+    unreadCount.value = res.unread_count
+  } catch { /* 静默 */ }
+}
 
 // 键盘快捷键
 const tabKeys = ['dashboard', 'reports', 'logs', 'config', 'stats', 'camouflage', 'sources', 'scheduler']
@@ -84,11 +97,14 @@ onMounted(async () => {
     const v = await api.getDesktopVersion()
     hasUpdate.value = v.has_update
   } catch { statusInfo.value = '后端未连接' }
+  checkUnread()
+  notifTimer = setInterval(checkUnread, 30000)
   window.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  if (notifTimer) clearInterval(notifTimer)
 })
 </script>
 
@@ -124,6 +140,11 @@ onBeforeUnmount(() => {
           </div>
           <div class="footer-row footer-actions">
             <ThemeSwitcher />
+            <button class="notif-bell-btn" @click="showNotificationPanel = !showNotificationPanel" title="通知">
+              <span class="bell-icon">🔔</span>
+              <span v-if="unreadCount > 0" class="notif-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+            </button>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 6px" @click="showAiAssistant = !showAiAssistant" title="AI 助手">AI</button>
           </div>
           <div class="footer-row shortcut-hint text-dim text-sm">
             <span>1-8 切换 · Ctrl+E 执行 · ? 帮助</span>
@@ -163,6 +184,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Teleport>
+
+    <NotificationPanel v-if="showNotificationPanel" :show-toast="showToast" @close="showNotificationPanel = false" />
+    <AiAssistant v-if="showAiAssistant" :show-toast="showToast" @close="showAiAssistant = false" />
   </div>
 </template>
 
@@ -242,6 +266,21 @@ onBeforeUnmount(() => {
 .footer-actions { justify-content: flex-end; }
 .footer-status { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shortcut-hint { opacity: 0.45; font-size: 10px; line-height: 1.4; text-align: center; justify-content: center; }
+
+/* ── 通知铃铛 ── */
+.notif-bell-btn {
+  position: relative; background: none; border: none; cursor: pointer;
+  padding: 4px; font-size: 14px; line-height: 1; border-radius: var(--radius-sm);
+  color: var(--text-dim); transition: var(--transition-fast);
+}
+.notif-bell-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.notif-badge {
+  position: absolute; top: -2px; right: -4px;
+  background: var(--danger, #e06c75); color: #fff;
+  font-size: 9px; font-weight: 700; line-height: 1;
+  padding: 2px 4px; border-radius: 8px; min-width: 14px; text-align: center;
+  box-shadow: 0 0 4px rgba(224,108,117,0.5); pointer-events: none;
+}
 
 /* ── 快捷键帮助 ── */
 .shortcuts-panel { max-width: 400px; }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report, type SystemStatus } from '../api/client'
+import ExtraReportForm from '../components/ExtraReportForm.vue'
 
 const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void; onNavigate?: (tab: string) => void }>()
 
@@ -11,6 +12,9 @@ const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
 const warnings = ref<{ text: string; tab?: string }[]>([])
+const complianceRate = ref<number | null>(null)
+const showExtraForm = ref(false)
+const todayStr = new Date().toISOString().slice(0, 10)
 let abortController: AbortController | null = null
 
 async function loadAll() {
@@ -46,10 +50,18 @@ async function loadAll() {
       warns.push({ text: '后端服务未连接，部分功能不可用' })
     }
     warnings.value = warns
+    loadCompliance()
   } catch {
     error.value = '无法连接后端服务'
   }
   loading.value = false
+}
+
+async function loadCompliance() {
+  try {
+    const res = await api.getCompliance(30)
+    complianceRate.value = res.compliance_rate
+  } catch { /* 静默 */ }
 }
 
 async function triggerReport() {
@@ -148,6 +160,7 @@ onBeforeUnmount(cleanupSSE)
         <span v-if="reportLoading" class="btn-spinner"></span>
         {{ reportLoading ? '执行中...' : '▶ 执行日报' }}
       </button>
+      <button class="btn btn-ghost" @click="showExtraForm = true">+ 补录</button>
     </div>
 
     <!-- 版本更新 -->
@@ -204,6 +217,16 @@ onBeforeUnmount(cleanupSSE)
         <div class="card-value"><span class="tag tag-success">运行中</span></div>
         <div class="card-sub">{{ status?.time?.slice(11, 19) || '--' }}</div>
       </div>
+      <div class="glass-card status-card">
+        <div class="card-glow" style="background:var(--accent)"></div>
+        <div class="card-label">合规率(30天)</div>
+        <div class="card-value" :style="{ color: complianceRate !== null && complianceRate >= 80 ? 'var(--success)' : (complianceRate !== null && complianceRate >= 50 ? 'var(--warning)' : 'var(--danger)') }">
+          {{ complianceRate !== null ? complianceRate + '%' : '--' }}
+        </div>
+        <div class="card-sub text-dim" v-if="complianceRate !== null">
+          {{ complianceRate >= 80 ? '优秀' : (complianceRate >= 50 ? '一般' : '需关注') }}
+        </div>
+      </div>
     </div>
 
     <!-- 最近日报 -->
@@ -225,6 +248,13 @@ onBeforeUnmount(cleanupSSE)
         </div>
       </div>
     </div>
+    <ExtraReportForm
+      v-if="showExtraForm"
+      :date="todayStr"
+      :show-toast="props.showToast"
+      @close="showExtraForm = false"
+      @saved="loadAll"
+    />
   </div>
 </template>
 

@@ -1,5 +1,17 @@
 # web 模块日志
 
+## 2026-06-28: 新增 10 个 API 端点（补录/通知/统计/AI 查询）
+- **文件:**
+  - `web/routes.py`
+- **原因:** 桌面版 Phase 2 增强，6 大新功能的后端支撑
+- **决策:**
+  - 手动补录：`GET/POST /extra-reports`、`PUT/DELETE /extra-reports/{id}`
+  - 通知中心：`GET /notifications`、`POST /notifications/{id}/read`、`POST /notifications/read-all`
+  - 统计增强：`GET /stats/compliance`（合规率）、`GET /stats/work-types`（类型/项目分布）
+  - AI 查询：`POST /ai-query`（RAG 模式，检索日报→LLM 总结）
+  - AIFactory 新增 `chat()` 通用对话方法支撑 AI 查询
+- **影响范围:** 路由从 27 增至 37 个
+
 ## 2026-06-27: 桌面版本地请求跳过鉴权
 - **文件:**
   - `web/routes.py`

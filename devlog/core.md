@@ -8,6 +8,16 @@
 - **决策:** 创建 `core/engine.py` 包含 `run_reporting_logic()`、`ensure_playwright_browsers()`、`trigger_rpa()`，`main.py` 改为从 `core.engine` 导入
 - **影响范围:** `main.py` 精简 ~300 行，`web/routes.py` 可直接导入 `run_reporting_logic`
 
+## 2026-06-28: 通知中心联动 — engine.py 插入通知
+- **文件:**
+  - `core/engine.py`
+- **原因:** 通知中心需要引擎在执行关键节点时插入通知记录
+- **决策:**
+  - 流程开始时插入 report_started
+  - 推送成功后插入 push_success，草稿模式插入 draft_saved
+  - 推送失败时插入 push_failed
+- **影响范围:** engine.py 中 4 处 try/except 新增 db.add_notification 调用
+
 ## 2026-06-26: 修复 Database.save_report 参数名错误
 - **文件:**
   - `core/engine.py`

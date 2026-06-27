@@ -154,6 +154,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
 })
+
+function extractFirstType(summary: string): string {
+  try {
+    const items = JSON.parse(summary)
+    if (Array.isArray(items) && items.length > 0) return items[0].type || '--'
+  } catch { /* */ }
+  return '--'
+}
 </script>
 
 <template>
@@ -207,6 +215,7 @@ onBeforeUnmount(() => {
             <th>平台</th>
             <th>摘要</th>
             <th>类型</th>
+            <th>类型</th>
             <th>状态</th>
             <th>操作</th>
           </tr>
@@ -216,6 +225,7 @@ onBeforeUnmount(() => {
             <td class="text-dim text-sm">{{ r.created_at?.slice(11, 19) || r.date }}</td>
             <td>{{ r.platform }}</td>
             <td class="summary-cell">{{ r.summary?.slice(0, 80) }}{{ r.summary?.length > 80 ? '...' : '' }}</td>
+            <td><span class="tag tag-info text-sm">{{ extractFirstType(r.summary) }}</span></td>
             <td>
               <span class="tag" :class="r.is_camouflage ? 'tag-warning' : 'tag-info'">
                 {{ r.is_camouflage ? '伪装' : '正常' }}

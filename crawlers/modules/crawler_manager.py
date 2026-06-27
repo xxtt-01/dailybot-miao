@@ -2,8 +2,10 @@ import asyncio
 import os
 import random
 from collections import defaultdict
+from datetime import datetime
 from loguru import logger
 from common.config import config
+from common.database import db
 from prompts import prompts
 from utils.dynamic_manager import BaseDynamicManager
 from .camouflage_history import camouflage_history_manager
@@ -91,6 +93,25 @@ class CrawlerManager(BaseDynamicManager):
 
             active_crawler_instances.append(crawler_instance)
             platform_names.append(p_name)
+
+        # 从数据库查询 extra_reports（桌面版手动补录）
+        async def fetch_db_extra_reports():
+            try:
+                today = datetime.now().strftime("%Y-%m-%d")
+                items = db.get_extra_reports(today)
+                if not items:
+                    return {}
+                contents = []
+                for item in items:
+                    project_tag = f"[{item['project']}] " if item.get('project') else ""
+                    type_tag = f"({item['work_type']}) " if item.get('work_type') else ""
+                    contents.append(f"{project_tag}{type_tag}{item['content']}")
+                return {"extra_report": {today: contents}}
+            except Exception as e:
+                logger.debug(f"[额外报告] 数据库查询失败（非关键）: {e}")
+                return {}
+
+        extra_tasks.append(fetch_db_extra_reports())
 
         if not crawl_tasks:
             return "", 0, False, []

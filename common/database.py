@@ -54,6 +54,27 @@ class Database:
                     platform TEXT, status TEXT NOT NULL, message TEXT,
                     created_at TEXT DEFAULT (datetime('now'))
                 );
+                CREATE TABLE IF NOT EXISTS extra_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    project TEXT DEFAULT '',
+                    work_type TEXT DEFAULT '',
+                    created_at TEXT DEFAULT (datetime('now')),
+                    updated_at TEXT DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_extra_date ON extra_reports(date);
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    body TEXT DEFAULT '',
+                    type TEXT NOT NULL,
+                    related_id INTEGER DEFAULT 0,
+                    read INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications(read);
+                CREATE INDEX IF NOT EXISTS idx_notif_time ON notifications(created_at);
             """)
         # 迁移：给旧表加 pushed 列（幂等）
         try:
@@ -173,7 +194,74 @@ class Database:
             camo_deleted = conn.execute(
                 "DELETE FROM camouflage_history WHERE date < date('now', ?)", (f"-{days} days",)
             ).rowcount
-            return {"reports_deleted": reports_deleted, "logs_deleted": logs_deleted, "camouflage_deleted": camo_deleted}
+            notif_deleted = conn.execute(
+                "DELETE FROM notifications WHERE created_at < datetime('now', ?)", (f"-{days} days",)
+            ).rowcount
+            return {"reports_deleted": reports_deleted, "logs_deleted": logs_deleted, "camouflage_deleted": camo_deleted, "notifications_deleted": notif_deleted}
+
+    # ── extra_reports ──
+    def get_extra_reports(self, date: str) -> list:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM extra_reports WHERE date=? ORDER BY created_at", (date,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def add_extra_report(self, date: str, content: str, project: str = "", work_type: str = "") -> int:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO extra_reports (date, content, project, work_type) VALUES (?, ?, ?, ?)",
+                (date, content, project, work_type),
+            )
+            return cur.lastrowid
+
+    def update_extra_report(self, id: int, content: str, project: str = "", work_type: str = "") -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE extra_reports SET content=?, project=?, work_type=?, updated_at=datetime('now') WHERE id=?",
+                (content, project, work_type, id),
+            )
+            return cur.rowcount > 0
+
+    def delete_extra_report(self, id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM extra_reports WHERE id=?", (id,))
+            return cur.rowcount > 0
+
+    # ── notifications ──
+    def add_notification(self, title: str, body: str, type: str, related_id: int = 0) -> int:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO notifications (title, body, type, related_id) VALUES (?, ?, ?, ?)",
+                (title, body, type, related_id),
+            )
+            return cur.lastrowid
+
+    def get_notifications(self, limit: int = 50, unread_only: bool = False) -> list:
+        with self._get_conn() as conn:
+            sql = "SELECT * FROM notifications"
+            params: list = []
+            if unread_only:
+                sql += " WHERE read=0"
+            sql += " ORDER BY created_at DESC LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(sql, params).fetchall()
+            return [dict(r) for r in rows]
+
+    def mark_notification_read(self, id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("UPDATE notifications SET read=1 WHERE id=?", (id,))
+            return cur.rowcount > 0
+
+    def mark_all_notifications_read(self) -> int:
+        with self._get_conn() as conn:
+            cur = conn.execute("UPDATE notifications SET read=1 WHERE read=0")
+            return cur.rowcount
+
+    def get_unread_notification_count(self) -> int:
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT COUNT(*) as cnt FROM notifications WHERE read=0").fetchone()
+            return row["cnt"] if row else 0
 
 
 db = Database()

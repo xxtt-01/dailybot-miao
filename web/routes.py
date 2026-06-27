@@ -5,12 +5,13 @@ import os
 import signal
 import traceback
 import yaml
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Header, Query, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
+from pydantic import BaseModel
 
 from common import config
 from common.database import db
@@ -64,6 +65,24 @@ def _write_config_yaml(updates: dict):
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(verify_admin_key)])
+
+
+class ExtraReportCreate(BaseModel):
+    date: str
+    content: str
+    project: str = ""
+    work_type: str = ""
+
+
+class ExtraReportUpdate(BaseModel):
+    content: str
+    project: str = ""
+    work_type: str = ""
+
+
+class AiQueryRequest(BaseModel):
+    question: str
+    days: int = 30
 
 
 @router.get("/status")
@@ -500,3 +519,215 @@ async def auto_maintenance():
         cleanup = {"error": str(e)}
     logger.info("🧹 [自维护] VACUUM + 数据清理完成")
     return {"success": True, "message": "自维护完成", "vacuum": True, "cleanup": cleanup}
+
+
+# ── 手动补录 API ──────────────────────────
+
+
+@router.get("/extra-reports")
+async def get_extra_reports(date: str = Query(...)):
+    """获取指定日期的补录列表"""
+    items = db.get_extra_reports(date)
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/extra-reports")
+async def create_extra_report(data: ExtraReportCreate):
+    """添加补录"""
+    id = db.add_extra_report(data.date, data.content, data.project, data.work_type)
+    return {"success": True, "id": id}
+
+
+@router.put("/extra-reports/{report_id}")
+async def update_extra_report(report_id: int, data: ExtraReportUpdate):
+    """编辑补录"""
+    ok = db.update_extra_report(report_id, data.content, data.project, data.work_type)
+    if not ok:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    return {"success": True}
+
+
+@router.delete("/extra-reports/{report_id}")
+async def delete_extra_report(report_id: int):
+    """删除补录"""
+    ok = db.delete_extra_report(report_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    return {"success": True}
+
+
+# ── 通知中心 API ──────────────────────────
+
+
+@router.get("/notifications")
+async def get_notifications(limit: int = Query(50, ge=1, le=200), unread_only: bool = Query(False)):
+    items = db.get_notifications(limit, unread_only)
+    unread_count = db.get_unread_notification_count()
+    return {"items": items, "count": len(items), "unread_count": unread_count}
+
+
+@router.post("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: int):
+    ok = db.mark_notification_read(notif_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="通知不存在")
+    return {"success": True}
+
+
+@router.post("/notifications/read-all")
+async def mark_all_read():
+    count = db.mark_all_notifications_read()
+    return {"success": True, "marked": count}
+
+
+# ── 统计 API ──────────────────────────
+
+
+@router.get("/stats/compliance")
+async def get_compliance(days: int = Query(30, ge=7, le=90)):
+    """日报合规率：实际生成日报天数 / 应生成工作日天数"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    with db._get_conn() as conn:
+        actual_rows = conn.execute(
+            "SELECT DISTINCT date FROM daily_reports WHERE date BETWEEN ? AND ? ORDER BY date",
+            (start, today),
+        ).fetchall()
+        actual_dates = set(r["date"] for r in actual_rows)
+
+        daily = conn.execute(
+            "SELECT date, COUNT(*) as cnt FROM daily_reports WHERE date BETWEEN ? AND ? GROUP BY date ORDER BY date",
+            (start, today),
+        ).fetchall()
+
+    # 计算工作日
+    all_dates = []
+    current = datetime.strptime(start, "%Y-%m-%d")
+    end_dt = datetime.strptime(today, "%Y-%m-%d")
+    while current <= end_dt:
+        if current.weekday() < 5:
+            all_dates.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+
+    reported_dates_set = set(r["date"] for r in daily)
+    compliance_rate = round(len(actual_dates) / len(all_dates) * 100, 1) if all_dates else 100
+
+    trend = []
+    for d in all_dates:
+        cnt = next((r["cnt"] for r in daily if r["date"] == d), 0)
+        trend.append({"date": d, "reported": d in actual_dates, "count": cnt})
+
+    return {
+        "days": days,
+        "total_workdays": len(all_dates),
+        "reported_days": len(actual_dates),
+        "compliance_rate": compliance_rate,
+        "trend": trend,
+    }
+
+
+@router.get("/stats/work-types")
+async def get_work_types(days: int = Query(7, ge=1, le=90)):
+    """解析日报 summary 中的 type 和 project 分布"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    with db._get_conn() as conn:
+        rows = conn.execute(
+            "SELECT date, platform, summary, is_camouflage FROM daily_reports WHERE date BETWEEN ? AND ? ORDER BY date",
+            (start, today),
+        ).fetchall()
+
+    type_count: dict = {}
+    project_count: dict = {}
+    daily_type_trend: dict = {}
+
+    for row in rows:
+        summary = row["summary"]
+        date_str = row["date"]
+        if date_str not in daily_type_trend:
+            daily_type_trend[date_str] = {}
+        try:
+            items = json.loads(summary)
+            if isinstance(items, list):
+                for item in items:
+                    t = item.get("type", "其他")
+                    p = item.get("project", "其他")
+                    type_count[t] = type_count.get(t, 0) + 1
+                    project_count[p] = project_count.get(p, 0) + 1
+                    daily_type_trend[date_str][t] = daily_type_trend[date_str].get(t, 0) + 1
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    sorted_types = sorted(type_count.items(), key=lambda x: -x[1])
+    sorted_projects = sorted(project_count.items(), key=lambda x: -x[1])
+
+    return {
+        "days": days,
+        "type_distribution": [{"name": k, "count": v} for k, v in sorted_types],
+        "project_distribution": [{"name": k, "count": v} for k, v in sorted_projects],
+        "type_trend": daily_type_trend,
+        "platforms": list(set(r["platform"] for r in rows)),
+    }
+
+
+# ── AI 查询 API ──────────────────────────
+
+
+@router.post("/ai-query")
+async def ai_query(data: AiQueryRequest):
+    """AI 对话查询：用自然语言查询历史日报数据"""
+    from providers.modules.ai_factory import AIFactory
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=data.days)).strftime("%Y-%m-%d")
+
+    with db._get_conn() as conn:
+        rows = conn.execute(
+            "SELECT date, platform, summary, is_camouflage, pushed FROM daily_reports WHERE date BETWEEN ? AND ? ORDER BY date DESC LIMIT 50",
+            (start, today),
+        ).fetchall()
+
+    reports_data = [dict(r) for r in rows]
+    if not reports_data:
+        return {"answer": "查询时间范围内没有日报数据。", "source_count": 0}
+
+    context_lines = [f"在 {start} 到 {today} 之间有 {len(reports_data)} 条日报记录："]
+    for r in reports_data[:30]:
+        preview = (r["summary"] or "")[:200]
+        context_lines.append(f"- {r['date']} [{r['platform']}]: {preview}")
+    context = "\n".join(context_lines)
+
+    prompt = f"""你是一个日报数据助手，根据用户的问题和提供的日报数据，给出简洁准确的回答。
+
+用户问题: {data.question}
+
+日报数据:
+{context}
+
+请基于以上数据回答用户的问题。如果数据不足以回答，请如实说明。回答要求：
+- 简洁、准确、有条理
+- 可以引用具体数据
+- 不要编造数据中没有的信息"""
+
+    try:
+        enabled_workflows = getattr(config, "ENABLED_WORKFLOWS", [])
+        if not enabled_workflows:
+            return {"answer": "没有配置工作流，无法调用 AI。", "source_count": len(reports_data)}
+
+        first_platform = enabled_workflows[0]
+        platform_config = config.get_platform(first_platform)
+        model_key = platform_config.get("ai_model", "")
+        if not model_key:
+            return {"answer": "未找到 AI 模型配置。", "source_count": len(reports_data)}
+
+        ai = AIFactory.get_ai(model_key)
+        if not ai:
+            return {"answer": "AI 模型不可用。", "source_count": len(reports_data)}
+
+        answer = await ai.chat(prompt, system_prompt="你是一个日报数据助手，基于日报数据回答问题。回答简洁准确。")
+        return {"answer": answer, "source_count": len(reports_data)}
+    except Exception as e:
+        logger.error(f"AI 查询失败: {e}")
+        return {"answer": f"AI 查询时出错: {str(e)[:100]}", "source_count": len(reports_data)}

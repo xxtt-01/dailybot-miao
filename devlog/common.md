@@ -21,6 +21,16 @@
   - `get_report_by_id(report_id)` — 按 ID 查询单条日报详情
 - **影响范围:** 新增 3 个 Database 方法，供 web 路由层调用
 
+## 2026-06-28: 新增 extra_reports 和 notifications 表 + 清理联动
+- **文件:**
+  - `common/database.py`
+- **原因:** 桌面版 Phase 2 需要手动补录和通知中心功能
+- **决策:**
+  - 新增 `extra_reports` 表（date, content, project, work_type）和 4 个 CRUD 方法
+  - 新增 `notifications` 表（title, body, type, read）和 6 个操作方法
+  - `cleanup_old_records` 追加清理通知记录
+- **影响范围:** database.py 新增约 60 行，cleanup 返回值新增 notifications_deleted
+
 ## 2026-06-26: 修复 Windows 终端编码问题
 - **文件:**
   - `common/logger.py`

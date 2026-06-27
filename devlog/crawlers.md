@@ -1,5 +1,12 @@
 # crawlers 模块日志
 
+## 2026-06-28: 采集时合并数据库 extra_reports
+- **文件:**
+  - `crawlers/modules/crawler_manager.py`
+- **原因:** 桌面版手动补录入库后，采集流程需要自动读取并合并到 AI 输入
+- **决策:** `collect_and_camouflage` 中增加 `fetch_db_extra_reports` 异步任务，查询当日 extra_reports 表，转换为 `[额外信息补充]` 格式混入采集结果
+- **影响范围:** 采集流程会自动包含桌面版提交的补录记录
+
 ## 2026-06-24: 新增伪装素材列表与删除方法
 - **文件:**
   - `crawlers/modules/camouflage_history.py`

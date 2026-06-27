@@ -83,6 +83,11 @@ async def run_reporting_logic():
     """全异步工作流：采集 -> AI 总结 -> 推送"""
     log.info("🎬 开始执行报告生成流程...")
 
+    try:
+        db.add_notification(title="日报开始执行", body="日报生成流程已启动", type="report_started")
+    except Exception:
+        pass
+
     enabled_workflow_names = getattr(config, "ENABLED_WORKFLOWS")
     active_workflows = []
 
@@ -241,9 +246,25 @@ async def run_reporting_logic():
                 await wf.on_report_success(summary, ctx)
                 log.info(f"✅ [推送] 平台 {wf.WORKFLOW_NAME} 通知已发送")
                 pushed = 1
+                try:
+                    db.add_notification(
+                        title="日报推送成功",
+                        body=f"{wf.WORKFLOW_NAME} 平台日报已推送完成",
+                        type="push_success",
+                    )
+                except Exception:
+                    pass
             else:
                 log.info(f"📝 [草稿] 平台 {wf.WORKFLOW_NAME} 自动推送已关闭，保存为草稿")
                 pushed = 0
+                try:
+                    db.add_notification(
+                        title="日报已存草稿",
+                        body=f"{wf.WORKFLOW_NAME} 平台日报已保存为草稿",
+                        type="draft_saved",
+                    )
+                except Exception:
+                    pass
 
             try:
                 db.save_report(
@@ -268,6 +289,14 @@ async def run_reporting_logic():
         except Exception as e:
             log.error(f"工作流 {wf.WORKFLOW_NAME} 最终处置失败: {e}")
             await wf.on_report_failure(str(e), ctx)
+            try:
+                db.add_notification(
+                    title="日报推送失败",
+                    body=f"{wf.WORKFLOW_NAME} 平台: {str(e)[:100]}",
+                    type="push_failed",
+                )
+            except Exception:
+                pass
             try:
                 db.log_run(
                     date=datetime.now().strftime("%Y-%m-%d"),
