@@ -10,6 +10,8 @@ const themes = [
   { id: 'lavender', label: '薰衣草', color: '#b794f4' },
   { id: 'sunset',   label: '落日', color: '#f6ad55' },
   { id: 'rose',     label: '玫瑰', color: '#f687b3' },
+  { id: 'light',    label: '浅色', color: '#a0aec0' },
+  { id: 'auto',     label: '跟随系统', color: 'rgba(128,138,152,0.5)' },
 ]
 
 const currentTheme = ref(localStorage.getItem(THEME_KEY) || 'mint')
