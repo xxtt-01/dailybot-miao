@@ -1,5 +1,21 @@
 # desktop 模块日志
 
+## 2026-06-27: 主题色选择 + 排版现代化
+- **文件:**
+  - `desktop/src/styles/main.css`
+  - `desktop/src/components/ThemeSwitcher.vue`
+  - `desktop/src/App.vue`
+- **新增:**
+  - 5 套主题色：薄荷（默认）、海洋、薰衣草、落日、玫瑰
+  - ThemeSwitcher 组件：侧边栏底部主题切换面板，选择即时生效并保存 localStorage
+  - 主题系统通过 `data-theme` 属性切换，深色背景色 + 强调色同步变化
+  - 环境光晕颜色随主题联动
+- **排版优化:**
+  - 侧边栏改为品牌区（图标 + 名称 + 版本）+ 导航 + 底部操作区
+  - 内容区 padding 加大，呼吸感更强
+  - 按钮 active 缩放加强（0.96x）
+  - 页面过渡动画调优
+
 ## 2026-06-27: 深度优化 — 毛玻璃质感 + 动效 + Toast 通知
 - **文件:**
   - `desktop/src/styles/main.css`
