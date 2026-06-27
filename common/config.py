@@ -340,8 +340,12 @@ class Config:
                             remaining = env_key_upper[len(p) :]
 
                         # 简单转换下划线风格
+                        # 注意：不能简单地把 _ 替换为 .，否则像 API_KEY 会被拆成 API.KEY
+                        # 导致注入时 nested dict 路径错误。保留 _ 让 _inject_env_value
+                        # 通过 current_data_keys 匹配单 key。
                         if p == prefix_under or p == f"{full_env_under}_":
-                            remaining = remaining.replace("_", ".")
+                            # 保持下划线分隔，让 _inject_env_value 通过大写匹配
+                            pass
 
                         # 启发式确定数据类型 (针对从 None 开始的情况)
                         if base_val is None and remaining.startswith("["):
@@ -422,6 +426,15 @@ class Config:
                 elif isinstance(data[actual_key], dict):
                     self._inject_env_value(data[actual_key], ".".join(parts[i:]), value)
                     return
+
+        # 2.5 兼容 env 变量下划线嵌套路径：
+        # 单 key 包含下划线且首段匹配现有 key 时，拆为嵌套路径后递归。
+        # 例如 PARAMS_TIMEOUT → PARAMS 是已知 key → 拆为 ["PARAMS","TIMEOUT"]
+        if len(parts) == 1:
+            us = parts[0].split("_")
+            if len(us) > 1 and us[0] in current_data_keys:
+                self._inject_env_value(data, ".".join(us), value)
+                return
 
         # 3. 兜底逻辑
         target = data

@@ -35,7 +35,7 @@ class OATHPlatformManager(BaseDynamicManager):
         获取 FastAPI 应用实例（延迟初始化）
         """
         if self._app is None:
-            self._app = FastAPI(title="DailyBot 日报喵", version="1.1.2")
+            self._app = FastAPI(title="DailyBot 小奕", version="1.1.2")
             # 注册全局异常处理器
             GlobalExceptionHandler.register(self._app)
             # 注册根路由：提供前端仪表盘

@@ -1,5 +1,16 @@
 # common 模块日志
 
+## 2026-06-27: 修复 config.py env 注入下划线转点号 Bug
+- **文件:**
+  - `common/config.py`
+- **原因:** `_inject_env_value` 中 `remaining.replace("_", ".")` 将 `API_KEY` 转为 `API.KEY`，导致注入时拆成嵌套路径 `["api"]["key"]` 而非单 key `api_key`
+- **根因:** 下划线既可能是 key 名的组成部分（如 api_key），也可能是嵌套路径分隔符（如 params_timeout），原代码一刀切全转点号
+- **决策:** 
+  1. 去除 `prefix_under` 匹配分支的 `replace("_", ".")`，保持下划线原样传递
+  2. 在 `_inject_env_value` 中增加启发式检测：单 key 含下划线且首段匹配现有 dict key 时，再拆分为嵌套路径递归处理
+- **影响范围:** 所有通过下划线风格 env 变量注入的配置项（如 `OPENAI_API_KEY`、`CRAWLER_SOURCES.GITHUB.TOKEN` 等）
+- **踩坑:** 无完美解决方案，只能通过启发式（首段 key 检查）做最佳近似
+
 ## 2026-06-24: 新增统计与查询方法
 - **文件:**
   - `common/database.py`
