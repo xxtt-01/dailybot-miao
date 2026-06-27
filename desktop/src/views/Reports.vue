@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report } from '../api/client'
+import VirtualList from '../components/VirtualList.vue'
 
 const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
 
@@ -237,13 +238,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 草稿列表 -->
-    <div v-else class="drafts-section">
-      <div v-if="drafts.length === 0" class="glass-card" style="padding:32px;text-align:center">
-        <div class="text-dim">没有待推送的草稿</div>
-      </div>
-      <div v-else class="draft-list">
-        <div v-for="r in drafts" :key="r.id" class="glass-card draft-item">
+    <!-- 草稿列表（虚拟滚动） -->
+    <VirtualList v-else-if="viewMode === 'drafts'" :items="drafts" :item-height="140" :overscan="4">
+      <template #default="{ item: r }">
+        <div class="glass-card draft-item">
           <div class="draft-header">
             <span class="tag tag-warning">待推送</span>
             <span class="text-dim text-sm">{{ r.platform }}</span>
@@ -255,7 +253,11 @@ onBeforeUnmount(() => {
             <button class="btn btn-success" @click="pushDraft(r)">▶ 推送</button>
           </div>
         </div>
-      </div>
+      </template>
+      <template #empty>
+        <div class="text-dim">没有待推送的草稿</div>
+      </template>
+    </VirtualList>
     </div>
 
     <!-- 详情弹窗 -->
@@ -354,7 +356,6 @@ onBeforeUnmount(() => {
 .actions-cell { display: flex; gap: 4px; }
 
 /* 草稿卡片 */
-.draft-list { display: flex; flex-direction: column; gap: var(--space-1); }
 .draft-item { padding: var(--space-2); }
 .draft-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
 .draft-summary { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin-bottom: var(--space-2); white-space: pre-wrap; }

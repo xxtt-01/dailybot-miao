@@ -161,6 +161,17 @@
   - live 模式保留 TransitionGroup 动画（日志条目有限，不需虚拟化）
 - **影响范围:** 新建组件 + Logs 页适配
 
+## 2026-06-28: 虚拟滚动 Reports + 浅色主题 + 跟随系统
+- **文件:**
+  - `desktop/src/views/Reports.vue`
+  - `desktop/src/styles/main.css`
+  - `desktop/src/components/ThemeSwitcher.vue`
+- **决策:**
+  - Reports 草稿列表改为 VirtualList 渲染，避免大量草稿时 DOM 过多
+  - 新增浅色主题（明快白），适合白天环境使用
+  - 新增"跟随系统"选项，通过 CSS `prefers-color-scheme` media query 自动切换深色/浅色，无需 JS 监听
+- **影响范围:** 前端 3 文件
+
 ## 2026-06-28: Sprint 5 — 日报编辑推送工作流
 - **文件:**
   - `common/database.py`
