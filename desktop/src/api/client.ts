@@ -82,6 +82,47 @@ export interface VersionInfo {
   download_url: string
 }
 
+export interface ExtraReport {
+  id: number
+  date: string
+  content: string
+  project: string
+  work_type: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Notification {
+  id: number
+  title: string
+  body: string
+  type: string
+  related_id: number
+  read: number
+  created_at: string
+}
+
+export interface ComplianceData {
+  days: number
+  total_workdays: number
+  reported_days: number
+  compliance_rate: number
+  trend: { date: string; reported: boolean; count: number }[]
+}
+
+export interface WorkTypeData {
+  days: number
+  type_distribution: { name: string; count: number }[]
+  project_distribution: { name: string; count: number }[]
+  type_trend: Record<string, Record<string, number>>
+  platforms: string[]
+}
+
+export interface AiQueryResult {
+  answer: string
+  source_count: number
+}
+
 export const api = {
   getStatus: () => request<SystemStatus>('/admin/status'),
   getConfig: () => request<any>('/admin/config?masked=true'),
@@ -151,4 +192,46 @@ export const api = {
     }),
   pushReport: (id: number) =>
     request<{ success: boolean; message: string }>(`/admin/reports/${id}/push`, { method: 'POST' }),
+
+  // ── Extra Reports ──
+  getExtraReports: (date: string) =>
+    request<{ items: ExtraReport[]; count: number }>(`/admin/extra-reports?date=${date}`),
+  addExtraReport: (data: { date: string; content: string; project?: string; work_type?: string }) =>
+    request<{ success: boolean; id: number }>('/admin/extra-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  updateExtraReport: (id: number, data: { content: string; project?: string; work_type?: string }) =>
+    request<{ success: boolean }>(`/admin/extra-reports/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+  deleteExtraReport: (id: number) =>
+    request<{ success: boolean }>(`/admin/extra-reports/${id}`, { method: 'DELETE' }),
+
+  // ── Notifications ──
+  getNotifications: (limit = 50, unreadOnly = false) =>
+    request<{ items: Notification[]; count: number; unread_count: number }>(
+      `/admin/notifications?limit=${limit}&unread_only=${unreadOnly}`
+    ),
+  markNotificationRead: (id: number) =>
+    request<{ success: boolean }>(`/admin/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () =>
+    request<{ success: boolean; marked: number }>('/admin/notifications/read-all', { method: 'POST' }),
+
+  // ── Stats ──
+  getCompliance: (days = 30) =>
+    request<ComplianceData>(`/admin/stats/compliance?days=${days}`),
+  getWorkTypes: (days = 30) =>
+    request<WorkTypeData>(`/admin/stats/work-types?days=${days}`),
+
+  // ── AI Query ──
+  aiQuery: (question: string, days = 30) =>
+    request<AiQueryResult>('/admin/ai-query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, days }),
+    }),
 }

@@ -245,3 +245,23 @@
   - 后端新增 `POST /admin/maintenance/cleanup` 接口
   - 前端 Scheduler 页面增加"数据维护"卡片，可选 7/30/90/180 天保留策略
 - **影响范围:** 后端 2 文件 + 前端 2 文件
+
+## 2026-06-28: Phase 2 — 6 大功能增强
+- **文件:**
+  - `desktop/src/api/client.ts`
+  - `desktop/src/App.vue`
+  - `desktop/src/components/ExtraReportForm.vue`（新建）
+  - `desktop/src/components/NotificationPanel.vue`（新建）
+  - `desktop/src/components/AiAssistant.vue`（新建）
+  - `desktop/src/views/Dashboard.vue`
+  - `desktop/src/views/Reports.vue`
+  - `desktop/src/views/Stats.vue`
+- **原因:** 从日报管理工具向工程效能平台升级
+- **决策:**
+  - 手动补录：ExtraReportForm 弹窗 + extra_reports 表 + 采集时自动合并到 AI 输入
+  - 通知中心：NotificationPanel 右滑面板 + 未读红点 + 引擎自动插入通知 + 30s 轮询
+  - 合规率看板：Dashboard 合规率卡片 + Stats 合规率趋势图
+  - 类型分类：Reports 类型列 + Stats 饼图（type）+ 柱状图（project）
+  - HTML 导出：Stats 生成周报/月报 → 新窗口交互式报告（ECharts + 明细表 + 打印）
+  - AI 查询：AiAssistant 浮动面板 + 预设问题 + RAG 检索 + AIFactory.chat
+- **影响范围:** 后端 5 文件 + 前端 3 新建 5 修改 + API 10 新端点

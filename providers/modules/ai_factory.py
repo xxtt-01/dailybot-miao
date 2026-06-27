@@ -218,6 +218,42 @@ class AIFactory(BaseAIProvider):
             logger.error(f"[{self.AI_PROVIDER_NAME}] 总结请求异常: {str(e)}")
             raise RuntimeError(f"[{self.AI_PROVIDER_NAME}] 总结请求异常: {str(e)}")
 
+    async def chat(self, question: str, system_prompt: str = "你是一个有用的AI助手。") -> str:
+        """通用对话接口（非日报总结），供 AI 查询等场景使用"""
+        chat_req = self.api_reqs.get("chat_completions")
+        if not chat_req:
+            raise ValueError(f"[{self.AI_PROVIDER_NAME}] 未找到聊天接口")
+
+        cfg = self.model_cfg if self.model_cfg else config.get_model(self.AI_PROVIDER_NAME)
+        if not cfg:
+            raise ValueError(f"[{self.AI_PROVIDER_NAME}] 未找到模型配置")
+
+        model_id = getattr(self, "model_id", None)
+        if not model_id or model_id == self.AI_PROVIDER_NAME:
+            model_id = cfg.get("model")
+            if not model_id and cfg.get("models") and isinstance(cfg.get("models"), list):
+                model_id = cfg.get("models")[0]
+        if not model_id:
+            raise ValueError(f"[{self.AI_PROVIDER_NAME}] 缺少模型 ID")
+
+        payload = {
+            "model": model_id,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ],
+        }
+
+        custom_params = cfg.get("params", {})
+        if custom_params:
+            timeout = custom_params.get("timeout", 0)
+            if timeout:
+                custom_params["timeout"] = timeout * 60
+            payload.update(custom_params)
+
+        res_data = await chat_req.fetch(payload)
+        return self._parse_response(res_data)
+
     def _render_payload(self, template, context):
         """
         递归渲染负载模板，替换占位符

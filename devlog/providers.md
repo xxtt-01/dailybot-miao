@@ -1,5 +1,12 @@
 # providers 模块日志
 
+## 2026-06-28: AIFactory 新增通用 chat 方法
+- **文件:**
+  - `providers/modules/ai_factory.py`
+- **原因:** AI 对话查询功能需要通用对话接口，现有 `summarize` 方法绑定日报提示词模板
+- **决策:** 新增 `chat(question, system_prompt)` 方法，构造轻量 messages payload，复用现有 `chat_req.fetch` 和 `_parse_response`
+- **影响范围:** AIFactory 新增 1 个公共方法，不影响现有 summarize 逻辑
+
 ## 2026-06-26: 修复 AI Provider API 调用链路
 - **文件:**
   - `providers/impl/anthropic_ai.py`
