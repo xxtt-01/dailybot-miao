@@ -172,6 +172,15 @@
   - 新增"跟随系统"选项，通过 CSS `prefers-color-scheme` media query 自动切换深色/浅色，无需 JS 监听
 - **影响范围:** 前端 3 文件
 
+## 2026-06-28: 审查修复 — 日志上限 + auto_push 开关
+- **文件:**
+  - `desktop/src/views/Logs.vue`
+  - `desktop/src/views/Config.vue`
+- **决策:**
+  - 实时日志：超出 1000 行后 splice 丢弃最旧的 25%，防内存增长
+  - Config 页：新增"快捷设置"卡片，为每个已启用的平台显示 auto_push 开关，实时切换生效
+- **影响范围:** 前端 2 文件
+
 ## 2026-06-28: Sprint 5 — 日报编辑推送工作流
 - **文件:**
   - `common/database.py`

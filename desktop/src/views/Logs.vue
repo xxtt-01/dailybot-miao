@@ -4,6 +4,7 @@ import { api, type RunLog } from '../api/client'
 import VirtualList from '../components/VirtualList.vue'
 
 const logs = ref<RunLog[]>([])
+const MAX_LIVE_LINES = 1000
 const liveLines = ref<{ id: number; time: string; level: string; msg: string }[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -65,6 +66,10 @@ async function startLiveLogs() {
               const msg = parts.slice(2).join(' | ') || text
               const id = lineIdCounter++
               liveLines.value.push({ id, time, level, msg })
+              // 上限控制：超出 1000 行时丢弃最旧的 25%
+              if (liveLines.value.length > MAX_LIVE_LINES) {
+                liveLines.value.splice(0, Math.floor(MAX_LIVE_LINES / 4))
+              }
             }
           }
           // 自动滚动到底部
