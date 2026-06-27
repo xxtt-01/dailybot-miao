@@ -461,3 +461,18 @@ async def cleanup_data(days: int = Query(30, ge=7, le=365)):
     """清理指定天数前的历史数据"""
     result = db.cleanup_old_records(days)
     return {"success": True, "message": f"已清理 {days} 天前的数据", "details": result}
+
+
+@router.post("/maintenance/auto")
+async def auto_maintenance():
+    """定期自维护：VACUUM 回收空间 + 清理 90 天前的历史数据"""
+    try:
+        db.vacuum()
+    except Exception as e:
+        logger.warning(f"VACUUM 失败（非关键）: {e}")
+    try:
+        cleanup = db.cleanup_old_records(90)
+    except Exception as e:
+        cleanup = {"error": str(e)}
+    logger.info("🧹 [自维护] VACUUM + 数据清理完成")
+    return {"success": True, "message": "自维护完成", "vacuum": True, "cleanup": cleanup}

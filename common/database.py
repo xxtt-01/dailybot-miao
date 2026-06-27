@@ -154,6 +154,12 @@ class Database:
         with self._get_conn() as conn:
             conn.execute("UPDATE daily_reports SET pushed=1 WHERE id=?", (report_id,))
 
+    def vacuum(self):
+        """回收数据库空间（VACUUM）"""
+        with self._get_conn() as conn:
+            conn.execute("VACUUM")
+            logger.info("🗜️ [数据库] VACUUM 完成，空间已回收")
+
     def cleanup_old_records(self, days: int = 30):
         """清理指定天数前的历史数据"""
         with self._get_conn() as conn:
