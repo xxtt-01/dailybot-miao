@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { api, type Report, type SystemStatus } from '../api/client'
 
-defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
+const props = defineProps<{ showToast?: (msg: string, type: 'success' | 'error' | 'info') => void }>()
 
 const status = ref<SystemStatus | null>(null)
 const versionInfo = ref<any>(null)
