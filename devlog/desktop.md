@@ -1,5 +1,30 @@
 # desktop 模块日志
 
+## 2026-06-27: 深度优化 — 毛玻璃质感 + 动效 + Toast 通知
+- **文件:**
+  - `desktop/src/styles/main.css`
+  - `desktop/src/components/TitleBar.vue`
+  - `desktop/src/components/Toast.vue`
+  - `desktop/src/App.vue`
+  - `desktop/src/views/Dashboard.vue`
+  - `desktop/src/views/Logs.vue`
+  - `desktop/src/views/Config.vue`
+  - `desktop/src/views/Reports.vue`
+  - `desktop/src/views/Sources.vue`
+  - `desktop/src/views/Camouflage.vue`
+  - `desktop/src/views/Scheduler.vue`
+- **优化内容:**
+  - 毛玻璃质感：环境光晕浮动球体、玻璃卡片内发光/边缘光泽、背景 acrylic 模糊叠加
+  - SVG 图标按钮（最小化/最大化/关闭替换文本符号）
+  - Toast 组件：玻璃风格通知提示，进入/退出动画，支持 success/error/info
+  - 页面切换动画：Transition 组件实现淡入 + 位移
+  - 日志列表 TransitionGroup 逐条渐入动画
+  - 骨架屏 shimmer 动画替代 loading 文字
+  - 状态卡片悬浮辉光效果
+  - 侧边栏导航活跃指示器（左侧亮条）
+  - 所有 alert() 替换为 Toast 通知
+  - 按钮 active 缩放反馈（0.97x）
+
 ## 2026-06-27: 窗口优化 — 无边框 + 自定义标题栏 + 透明背景
 - **文件:**
   - `desktop/electron/main/index.ts`
