@@ -42,6 +42,17 @@ body {
   line-height: 1.6;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  border-radius: 10px;       /* 圆角窗口边缘 */
+}
+
+/* 透明窗口模式下，整个界面背景用半透明色叠加 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-base);
+  border-radius: inherit;
 }
 
 #app { height: 100vh; overflow: hidden; }

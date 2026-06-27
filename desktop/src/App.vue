@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from './api/client'
+import TitleBar from './components/TitleBar.vue'
 import Dashboard from './views/Dashboard.vue'
 import Reports from './views/Reports.vue'
 import Logs from './views/Logs.vue'
@@ -42,12 +43,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app-layout">
-    <aside class="sidebar glass-card">
-      <div class="sidebar-header">
-        <div class="logo">奕</div>
-        <div class="version">v{{ versionStr || '--' }}</div>
-      </div>
+  <div class="app-frame">
+    <TitleBar />
+    <div class="app-body">
+      <aside class="sidebar glass-card">
+        <div class="sidebar-header">
+          <div class="version">v{{ versionStr || '--' }}</div>
+        </div>
       <nav class="sidebar-nav">
         <button v-for="tab in tabs" :key="tab.key"
           :class="['nav-item', { active: currentTab === tab.key }]"
@@ -73,18 +75,19 @@ onMounted(async () => {
       <Sources v-else-if="currentTab === 'sources'" />
       <Scheduler v-else-if="currentTab === 'scheduler'" />
     </main>
-  </div>
+    </div>{# app-body #}
+  </div>{# app-frame #}
 </template>
 
 <style scoped>
-.app-layout { display: flex; height: 100vh; overflow: hidden; }
+.app-frame { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.app-body { display: flex; flex: 1; overflow: hidden; }
 
 .sidebar {
-  width: 180px; margin: var(--space-1); padding: var(--space-2);
+  width: 180px; margin: 0 var(--space-1) var(--space-1) var(--space-1); padding: var(--space-2);
   display: flex; flex-direction: column; border-radius: var(--radius-lg); flex-shrink: 0;
 }
 .sidebar-header { text-align: center; padding-bottom: var(--space-2); border-bottom: 1px solid var(--glass-border); margin-bottom: var(--space-2); }
-.logo { font-size: 28px; font-weight: 700; color: var(--accent); }
 .version { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
 .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }

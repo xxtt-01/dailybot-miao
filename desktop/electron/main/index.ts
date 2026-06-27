@@ -64,7 +64,6 @@ function stopPythonBackend() {
 let tray: Tray | null = null
 
 function createTray(mainWindow: BrowserWindow) {
-  // 用 16x16 的纯色图标（暂时用 nativeImage 创建）
   const icon = nativeImage.createEmpty()
   tray = new Tray(icon)
 
@@ -111,25 +110,34 @@ let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 declare const app: Electron.App & { isQuitting?: boolean }
 
 async function createWindow() {
-  win = new BrowserWindow({
+  // Windows 11 acrylic 背景
+  const winOptions: Electron.BrowserWindowConstructorOptions = {
     title: 'DailyBot 小奕',
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     show: false,
+    frame: false,                // 无边框
+    transparent: true,           // 透明背景（玻璃效果需要）
     webPreferences: {
       preload,
       contextIsolation: true,
       nodeIntegration: false,
     },
-  })
+  }
 
-  // 窗口准备好后再显示，避免白屏闪烁
+  // Windows 11/10 acrylic 毛玻璃
+  if (process.platform === 'win32') {
+    winOptions.backgroundMaterial = 'acrylic'
+  }
+
+  win = new BrowserWindow(winOptions)
+
+  // 窗口准备好后再显示
   win.once('ready-to-show', () => {
     win?.show()
   })
@@ -149,6 +157,14 @@ async function createWindow() {
     }
   })
 
+  // 最大化状态变更 → 通知渲染进程
+  win.on('maximize', () => {
+    win?.webContents.send('window-state-changed', true)
+  })
+  win.on('unmaximize', () => {
+    win?.webContents.send('window-state-changed', false)
+  })
+
   // 外部链接用浏览器打开
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) shell.openExternal(url)
@@ -156,13 +172,20 @@ async function createWindow() {
   })
 }
 
-// ── 开机自启 ──────────────────────────────────
+// ── IPC 处理 ──────────────────────────────────
+
+ipcMain.handle('window-minimize', () => { win?.minimize() })
+ipcMain.handle('window-maximize', () => {
+  if (win?.isMaximized()) win.unmaximize()
+  else win?.maximize()
+})
+ipcMain.handle('window-close', () => { win?.close() })
+ipcMain.handle('window-is-maximized', () => win?.isMaximized() ?? false)
 
 ipcMain.handle('set-auto-launch', (_event, enabled: boolean) => {
   app.setLoginItemSettings({ openAtLogin: enabled })
   return true
 })
-
 ipcMain.handle('get-auto-launch', () => {
   return app.getLoginItemSettings().openAtLogin
 })
@@ -172,10 +195,9 @@ ipcMain.handle('get-auto-launch', () => {
 app.whenReady().then(() => {
   startPythonBackend()
   createWindow()
-  // 等窗口创建后再创建托盘
   setTimeout(() => {
     if (win) createTray(win)
-  }, 2000) // 延迟 2s 确保 Python 后端就绪
+  }, 2000)
 })
 
 app.on('window-all-closed', () => {
