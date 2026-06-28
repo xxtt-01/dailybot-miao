@@ -35,6 +35,7 @@ export interface Report {
   summary: string
   raw_data: string
   is_camouflage: number
+  pushed: number
   created_at: string
 }
 
