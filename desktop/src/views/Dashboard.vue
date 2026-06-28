@@ -276,8 +276,9 @@ onBeforeUnmount(cleanupSSE)
 .warning-item { display: flex; align-items: center; gap: var(--space-2); padding: 10px 14px; border-left: 3px solid var(--warning); font-size: 12px; }
 .warning-item.clickable { cursor: pointer; transition: var(--transition-fast); }
 .warning-item.clickable:hover { background: rgba(240,160,106,0.06); border-left-color: var(--warning); }
-.cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
-@media (max-width: 900px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+.cards-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
+@media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .status-card { padding: var(--space-2); position: relative; overflow: hidden; }
 .card-glow {
