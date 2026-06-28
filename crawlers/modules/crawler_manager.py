@@ -121,6 +121,12 @@ class CrawlerManager(BaseDynamicManager):
         real_results = all_results[: len(crawl_tasks)]
         extra_results = all_results[len(crawl_tasks) :]
 
+        # 提取数据库 extra_reports 结果（最后一个 extra 任务）
+        db_extra_result = extra_results[-1] if len(extra_results) > len(platform_names) else None
+        if isinstance(db_extra_result, Exception):
+            logger.debug(f"[额外报告] 数据库查询异常: {db_extra_result}")
+            db_extra_result = None
+
         # 2. 第二步：处理每个平台的结果，汇总生成嵌套报告
         platform_reports = []
 
@@ -136,6 +142,15 @@ class CrawlerManager(BaseDynamicManager):
             if isinstance(extra_result, Exception):
                 logger.error(f"❌ 平台 {p_name} 额外报告任务失败: {extra_result}")
                 extra_result = None
+
+            # 合并数据库手动补录结果到每个平台
+            if db_extra_result and isinstance(db_extra_result, dict) and "extra_report" in db_extra_result:
+                if extra_result and isinstance(extra_result, dict) and "extra_report" in extra_result:
+                    for dt, contents in db_extra_result["extra_report"].items():
+                        extra_result["extra_report"].setdefault(dt, [])
+                        extra_result["extra_report"][dt].extend(contents)
+                else:
+                    extra_result = db_extra_result
 
             # 获取本平台的显示名称
             p_display_name = crawler_instance.get_platform_name().upper()
