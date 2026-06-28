@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { api, type Notification } from '../api/client'
 
 const props = defineProps<{
-  show?: boolean
   onClose: () => void
   showToast?: (msg: string, type: 'success' | 'error' | 'info') => void
 }>()
@@ -43,7 +42,7 @@ onMounted(load)
 
 <template>
   <Teleport to="body">
-    <div v-if="props.show" class="notif-overlay" @click.self="props.onClose">
+    <div class="notif-overlay" @click.self="props.onClose">
       <div class="notif-panel glass-card">
         <div class="notif-header">
           <h3>通知</h3>

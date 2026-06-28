@@ -244,7 +244,7 @@ class AIFactory(BaseAIProvider):
             ],
         }
 
-        custom_params = cfg.get("params", {})
+        custom_params = dict(cfg.get("params", {}))
         if custom_params:
             timeout = custom_params.get("timeout", 0)
             if timeout:
