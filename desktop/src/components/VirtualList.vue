@@ -28,7 +28,7 @@ const visibleItems = computed(() => {
   return props.items.slice(start, end).map((item, i) => ({
     item,
     index: start + i,
-    style: { position: 'absolute', top: `${(start + i) * itemHeight}px`, left: 0, right: 0, height: `${itemHeight}px` },
+    style: { position: 'absolute' as const, top: `${(start + i) * itemHeight}px`, left: '0', right: '0', height: `${itemHeight}px` },
   }))
 })
 

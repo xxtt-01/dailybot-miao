@@ -117,7 +117,7 @@ const TreeNode = defineComponent({
     data: { type: Object as PropType<NodeData>, required: true },
   },
   setup(props) {
-    return () => {
+    return (): any => {
       const { key, val, path, depth } = props.data
       const nodePath = path + '/' + key
       const isObj = val !== null && typeof val === 'object'
