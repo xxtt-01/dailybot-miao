@@ -11,6 +11,7 @@ const reports = ref<Report[]>([])
 const loading = ref(true)
 const error = ref('')
 const reportLoading = ref(false)
+const progressText = ref('')
 const warnings = ref<{ text: string; tab?: string }[]>([])
 const complianceRate = ref<number | null>(null)
 const showExtraForm = ref(false)
@@ -19,53 +20,49 @@ let abortController: AbortController | null = null
 
 async function loadAll() {
   try {
-    const [st, v] = await Promise.all([
+    // 并行加载所有不依赖的数据
+    const [st, cfg, reportsRes, complianceRes] = await Promise.all([
       api.getStatus().catch(() => null),
-      api.getDesktopVersion().catch(() => null),
+      api.getConfig().catch(() => null),
+      api.getReports(todayStr).catch(() => null),
+      api.getCompliance(30).catch(() => null),
     ])
     status.value = st
-    versionInfo.value = v
-    if (st) {
-      const today = new Date().toISOString().slice(0, 10)
-      const res = await api.getReports(today).catch(() => null)
-      reports.value = (res?.reports || []).slice(0, 7)
-    }
+    reports.value = (reportsRes?.reports || []).slice(0, 7)
+    complianceRate.value = complianceRes?.compliance_rate ?? null
 
     // 环境配置自检
-    const cfg = await api.getConfig().catch(() => null)
     interface WarnItem { text: string; tab?: string }
     const warns: WarnItem[] = []
     if (cfg) {
       if (!cfg.crawler_sources || Object.keys(cfg.crawler_sources).length === 0) {
         warns.push({ text: '未配置采集源，点击前往添加仓库', tab: 'sources' })
       }
-      if (!cfg.providers || Object.keys(cfg.providers).length === 0) {
-        warns.push({ text: '未配置 AI 供应商，请检查 config.yaml', tab: 'config' })
+      const hasAiProvider = cfg.models && Object.values(cfg.models).some((m: any) => m?.api_key)
+      if (!hasAiProvider) {
+        warns.push({ text: '未配置 AI 供应商或 API Key，请检查 config.yaml', tab: 'config' })
       }
-      if (!cfg.workflows?.feishu?.webhook_url && !cfg.workflows?.feishu?.app_id) {
-        warns.push({ text: '未配置飞书推送，日报生成后不会推送消息', tab: 'config' })
+      const feishu = cfg.platforms?.feishu
+      if (!feishu?.app_id || !feishu?.target_chat_id) {
+        warns.push({ text: '未配置飞书 app_id 或推送群聊，日报生成后不会推送消息', tab: 'config' })
       }
     }
     if (!st) {
       warns.push({ text: '后端服务未连接，部分功能不可用' })
     }
     warnings.value = warns
-    loadCompliance()
   } catch {
     error.value = '无法连接后端服务'
   }
   loading.value = false
-}
 
-async function loadCompliance() {
-  try {
-    const res = await api.getCompliance(30)
-    complianceRate.value = res.compliance_rate
-  } catch { /* 静默 */ }
+  // 版本检查（非阻塞—外部 GitHub API 可能慢）
+  api.getDesktopVersion().then(v => { versionInfo.value = v }).catch(() => {})
 }
 
 async function triggerReport() {
   reportLoading.value = true
+  progressText.value = '正在提交任务...'
   try {
     await api.triggerReport()
 
@@ -77,12 +74,14 @@ async function triggerReport() {
     })
     if (!response.ok) {
       reportLoading.value = false
+      progressText.value = ''
       loadAll()
       return
     }
     const reader = response.body?.getReader()
     if (!reader) {
       reportLoading.value = false
+      progressText.value = ''
       loadAll()
       return
     }
@@ -101,7 +100,17 @@ async function triggerReport() {
             if (line.startsWith('data: ')) {
               const parsed = JSON.parse(line.slice(6))
               const text = parsed.text || ''
-              if (text.includes('执行完毕') || text.includes('✅')) {
+              // 提取关键阶段显示给用户
+              if (text.includes('采集') || text.includes('crawl')) {
+                progressText.value = '正在采集 Git 提交记录...'
+              } else if (text.includes('伪装') || text.includes('camouflage')) {
+                progressText.value = '正在补充伪装素材...'
+              } else if (text.includes('总结') || text.includes('summarize')) {
+                progressText.value = '正在 AI 总结...'
+              } else if (text.includes('推送') || text.includes('push') || text.includes('workflow')) {
+                progressText.value = '正在推送到飞书...'
+              } else if (text.includes('执行完毕') || text.includes('✅')) {
+                progressText.value = '✅ 完成'
                 cleanupSSE()
                 reportLoading.value = false
                 props.showToast?.('日报生成完成', 'success')
@@ -109,12 +118,17 @@ async function triggerReport() {
                 loadAll()
                 return
               } else if ((text.includes('失败') || text.includes('❌')) && !text.includes('触发')) {
+                progressText.value = '❌ 失败'
                 cleanupSSE()
                 reportLoading.value = false
                 props.showToast?.('日报生成失败，查看日志了解详情', 'error')
                 window.electronAPI?.showNotification?.('DailyBot', '日报生成失败')
                 loadAll()
                 return
+              } else if (text !== 'heartbeat' && text !== '_bypass_login') {
+                // 显示任意非心跳的日志行作为进展提示
+                const trimmed = text.replace(/^\d{2}:\d{2}:\d{2}\s*\|\s*/, '').slice(0, 60)
+                if (trimmed.length > 4) progressText.value = trimmed
               }
             }
           }
@@ -123,20 +137,23 @@ async function triggerReport() {
       cleanupSSE()
       if (reportLoading.value) {
         reportLoading.value = false
+        progressText.value = ''
         loadAll()
       }
     }
     readLoop()
 
-    // 30 秒超时保护
+    // 60 秒超时保护（日报可能比较慢）
     setTimeout(() => {
       if (abortController) {
         cleanupSSE()
         reportLoading.value = false
+        progressText.value = '⚠️ 超时，任务可能在后台继续执行'
       }
-    }, 30000)
+    }, 60000)
   } catch (e: any) {
     reportLoading.value = false
+    progressText.value = ''
     error.value = '触发失败: ' + (e.message || '未知错误')
   }
 }
@@ -161,6 +178,11 @@ onBeforeUnmount(cleanupSSE)
         {{ reportLoading ? '执行中...' : '▶ 执行日报' }}
       </button>
       <button class="btn btn-ghost" @click="showExtraForm = true">+ 补录</button>
+    </div>
+
+    <!-- 执行进度 -->
+    <div v-if="reportLoading && progressText" class="progress-bar glass-card fade-in">
+      <div class="progress-text">{{ progressText }}</div>
     </div>
 
     <!-- 版本更新 -->
@@ -298,4 +320,9 @@ onBeforeUnmount(cleanupSSE)
 .report-item { padding: var(--space-2); }
 .report-top { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 6px; }
 .report-summary { font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+
+/* 执行进度条 */
+.progress-bar { padding: 8px 14px; margin-bottom: var(--space-2); border-left: 3px solid var(--accent); }
+.progress-text { font-size: 12px; color: var(--text-secondary); animation: pulse-text 1.5s ease-in-out infinite; }
+@keyframes pulse-text { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 </style>

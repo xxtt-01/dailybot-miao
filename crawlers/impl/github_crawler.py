@@ -69,18 +69,22 @@ class GithubCrawler(BaseCrawler):
             return []
 
     async def _fetch_all_repos(self) -> list:
-        """从 GitHub API 自动发现用户的所有仓库（使用 /user/repos 端点）"""
+        """从 GitHub API 自动发现目标用户的所有公开仓库（使用 /users/{user}/repos 端点）"""
         token = self.get_api_token()
+        target_user = config.get("crawler_sources.github.target_user", "")
         repos = []
         page = 1
-        max_pages = 10  # 安全上限：最多 1000 个仓库
+        max_pages = 10
+        if not target_user:
+            logger.error("GitHub 自动发现: 未配置 target_user")
+            return []
         async with httpx.AsyncClient(verify=False) as client:
             while page <= max_pages:
                 try:
                     headers = {"Authorization": f"Bearer {token}"} if token else {}
                     resp = await client.get(
-                        f"{self._api_base_url}/user/repos",
-                        params={"per_page": 100, "page": page, "type": "all", "sort": "pushed"},
+                        f"{self._api_base_url}/users/{target_user}/repos",
+                        params={"per_page": 100, "page": page, "sort": "pushed", "type": "owner"},
                         headers=headers, timeout=30,
                     )
                     if resp.status_code != 200:
@@ -99,7 +103,7 @@ class GithubCrawler(BaseCrawler):
                 except Exception as e:
                     logger.error(f"GitHub 自动发现仓库失败: {e}")
                     break
-        logger.info(f"GitHub 自动发现 {len(repos)} 个仓库")
+        logger.info(f"GitHub 自动发现 {len(repos)} 个仓库 [目标用户: {target_user}]")
         return repos
 
     async def _fetch_all_commits(self, query_params: dict) -> list:

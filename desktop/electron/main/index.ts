@@ -39,13 +39,25 @@ function startPythonBackend(): Promise<void> {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     shell: process.platform === 'win32',
+    env: {
+      ...process.env,
+      PYTHONIOENCODING: 'utf-8',
+    },
   })
 
+  const textDecoder = new TextDecoder('utf-8')
+
   pythonProcess.stdout?.on('data', (data: Buffer) => {
-    console.log(`[Python] ${data.toString().trim()}`)
+    const text = textDecoder.decode(data, { stream: true })
+    for (const line of text.split('\n').filter(Boolean)) {
+      console.log(`[Python] ${line.trim()}`)
+    }
   })
   pythonProcess.stderr?.on('data', (data: Buffer) => {
-    console.error(`[Python:err] ${data.toString().trim()}`)
+    const text = textDecoder.decode(data, { stream: true })
+    for (const line of text.split('\n').filter(Boolean)) {
+      console.error(`[Python:err] ${line.trim()}`)
+    }
   })
   pythonProcess.on('exit', (code) => {
     console.log(`[Electron] Python 进程退出 (code: ${code})`)

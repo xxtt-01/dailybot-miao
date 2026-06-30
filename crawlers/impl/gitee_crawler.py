@@ -46,11 +46,15 @@ class GiteeCrawler(BaseCrawler):
             return result
 
     async def _fetch_all_repos(self) -> list:
-        """从 Gitee API 自动发现用户的所有仓库"""
+        """从 Gitee API 自动发现目标用户的所有公开仓库"""
         token = self.get_api_token()
+        target_user = config.get("crawler_sources.gitee.target_user", "")
         repos = []
         page = 1
-        max_pages = 10  # 安全上限：最多 1000 个仓库
+        max_pages = 10
+        if not target_user:
+            logger.error("Gitee 自动发现: 未配置 target_user")
+            return []
         async with httpx.AsyncClient(verify=False) as client:
             while page <= max_pages:
                 try:
@@ -58,7 +62,7 @@ class GiteeCrawler(BaseCrawler):
                     if token:
                         params["access_token"] = token
                     resp = await client.get(
-                        f"{self._api_base_url}/user/repos",
+                        f"{self._api_base_url}/users/{target_user}/repos",
                         params=params, timeout=30,
                     )
                     if resp.status_code != 200:
@@ -77,6 +81,7 @@ class GiteeCrawler(BaseCrawler):
                 except Exception as e:
                     logger.error(f"Gitee 自动发现仓库失败: {e}")
                     break
+        logger.info(f"Gitee 自动发现 {len(repos)} 个仓库 (用户: {target_user})")
         return repos
 
     async def _fetch_all_commits(self, query_params: dict) -> list:
