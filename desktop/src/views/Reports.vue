@@ -268,7 +268,6 @@ function extractFirstType(summary: string): string {
         <div class="text-dim">没有待推送的草稿</div>
       </template>
     </VirtualList>
-    </div>
 
     <!-- 详情弹窗 -->
     <Teleport to="body">

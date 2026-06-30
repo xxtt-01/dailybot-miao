@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from loguru import logger
 from utils.dynamic_manager import BaseDynamicManager
@@ -38,6 +39,14 @@ class OATHPlatformManager(BaseDynamicManager):
             self._app = FastAPI(title="DailyBot 小奕", version="1.1.2")
             # 注册全局异常处理器
             GlobalExceptionHandler.register(self._app)
+            # CORS：开发模式允许 Vite 跨域，生产模式 file:// 无跨域问题
+            self._app.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
             # 注册根路由：提供前端仪表盘
             self._register_dashboard_route()
             # 首次访问 app 时，确保所有平台已发现并挂载路由

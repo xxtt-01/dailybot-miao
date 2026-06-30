@@ -9,6 +9,7 @@ const platformStats = ref<PlatformStat[]>([])
 const platformTrendData = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
+const hasAnyData = ref(false)
 const trendChartRef = ref<HTMLDivElement>()
 const pieChartRef = ref<HTMLDivElement>()
 const platformChartRef = ref<HTMLDivElement>()
@@ -403,6 +404,7 @@ onMounted(async () => {
   initTypeChart()
   initProjectChart()
   await Promise.all([loadTrend(), loadPlatformStats(), loadPlatformTrend(), loadComplianceStats(), loadWorkTypes()])
+  hasAnyData.value = !!(trendData.value || platformStats.value.length > 0 || platformTrendData.value || complianceData.value || workTypeData.value)
   loading.value = false
   window.addEventListener('resize', onResize)
 })
@@ -430,6 +432,11 @@ onBeforeUnmount(() => {
       <span>{{ error }}</span>
     </div>
     <div v-else class="stats-grid">
+      <!-- 无数据提示 -->
+      <div v-if="!hasAnyData" class="glass-card" style="padding:32px;text-align:center;grid-column:1/-1">
+        <div class="text-dim">暂无统计数据，生成日报后会自动累积</div>
+      </div>
+
       <!-- 趋势图 -->
       <div class="glass-card chart-card">
         <div class="chart-header">
