@@ -318,6 +318,8 @@ async def get_sources():
                 "platform": platform_name,
                 "enabled": cfg.get("enabled", False),
                 "repo_count": len(repos),
+                "auto_discover": cfg.get("auto_discover", False),
+                "target_user": cfg.get("target_user", ""),
                 "repos": [{"path": r.get("path", ""), "branch": r.get("branch", "main")} for r in repos],
             })
     return {"sources": result}

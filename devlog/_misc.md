@@ -39,3 +39,10 @@
 - **原因:** `setup_logging()` 返回标准 logging.Logger，但日志调用用了 loguru 的 `{}` 格式化语法，导致 TypeError
 - **决策:** 将 `log.info("...{}...", arg)` 改为 `log.info("...%s...", arg)` 和 `log.info("...%d...", arg)`，兼容标准 logging
 - **影响范围:** run.py 和定时任务触发的日志输出
+
+## 2026-07-01: .gitignore 添加运行时生成文件
+- **文件:**
+  - `.gitignore`
+- **原因:** `token.json` 包含飞书 OAuth 敏感令牌，`camouflage_history.json` 是运行时数据文件，`nul` 是 Windows 重定向残留
+- **决策:** 将 `token.json`、`camouflage_history.json`、`nul` 加入 .gitignore
+- **影响范围:** `.gitignore`

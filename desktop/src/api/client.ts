@@ -73,6 +73,8 @@ export interface SourceInfo {
   platform: string
   enabled: boolean
   repo_count: number
+  auto_discover?: boolean
+  target_user?: string
   repos: { path: string; branch: string }[]
 }
 

@@ -197,7 +197,6 @@ async function createWindow() {
     minHeight: 600,
     show: false,
     frame: false,
-    transparent: true,
     webPreferences: {
       preload,
       contextIsolation: true,
@@ -209,10 +208,6 @@ async function createWindow() {
   if (savedState.x !== undefined && savedState.y !== undefined) {
     winOptions.x = savedState.x
     winOptions.y = savedState.y
-  }
-
-  if (process.platform === 'win32') {
-    winOptions.backgroundMaterial = 'acrylic'
   }
 
   win = new BrowserWindow(winOptions)

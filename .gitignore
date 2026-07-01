@@ -9,6 +9,11 @@ build/
 .env
 .env.*
 
+# Runtime generated files
+camouflage_history.json
+token.json
+nul
+
 # IDE
 .idea/
 .vscode/

@@ -76,3 +76,10 @@
     - 定时任务：`GET /scheduler`、`POST /scheduler/install`、`POST /scheduler/uninstall`
 - **依赖:** 依赖于 `common.database` 新增的 3 个方法和 `camouflage_history_manager` 新增的 2 个方法
 - **影响范围:** `web/routes.py` 路由总数从 5 增至 16
+
+## 2026-07-01: sources API 增加 auto_discover 字段
+- **文件:**
+  - `web/routes.py`
+- **原因:** Sources 页面无法区分"暂无仓库"和"自动发现已启用"
+- **决策:** `/admin/sources` 响应增加 `auto_discover` 和 `target_user` 字段
+- **影响范围:** `web/routes.py`

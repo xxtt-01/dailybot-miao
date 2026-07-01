@@ -165,3 +165,27 @@ def cleanup_old_files(
         pass
 
     return deleted_count
+
+
+def read_json(file_path: str, default=None):
+    """读取 JSON 文件"""
+    import json
+    if not os.path.exists(file_path):
+        return default
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def write_json(file_path: str, data, indent: int = 2) -> bool:
+    """写入 JSON 文件"""
+    import json
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=indent)
+        return True
+    except Exception:
+        return False
