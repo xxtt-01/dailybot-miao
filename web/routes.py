@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from common import config
 from common.database import db
 from core.engine import run_reporting_logic
+from utils.path_helper import get_app_dir, get_resource_path
 
 
 def verify_admin_key(
@@ -45,14 +46,14 @@ def _deep_merge(base: dict, updates: dict) -> dict:
 
 def _write_config_yaml(updates: dict):
     target_path = None
-    app_dir = __import__("utils.path_helper", fromlist=["get_app_dir"]).get_app_dir()
+    app_dir = get_app_dir()
     for p in [os.path.join(app_dir, "config.yaml"), os.path.join(app_dir, "config", "config.yaml")]:
         if os.path.exists(p):
             target_path = p
             break
     # 也检查资源路径
     if not target_path:
-        rp = __import__("utils.path_helper", fromlist=["get_resource_path"]).get_resource_path("config/config.yaml")
+        rp = get_resource_path("config/config.yaml")
         if os.path.exists(rp):
             target_path = rp
     if not target_path:
@@ -618,12 +619,6 @@ async def get_compliance(days: int = Query(30, ge=7, le=90)):
     start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
     with db._get_conn() as conn:
-        actual_rows = conn.execute(
-            "SELECT DISTINCT date FROM daily_reports WHERE date BETWEEN ? AND ? ORDER BY date",
-            (start, today),
-        ).fetchall()
-        actual_dates = set(r["date"] for r in actual_rows)
-
         daily = conn.execute(
             "SELECT date, COUNT(*) as cnt FROM daily_reports WHERE date BETWEEN ? AND ? GROUP BY date ORDER BY date",
             (start, today),
@@ -638,13 +633,13 @@ async def get_compliance(days: int = Query(30, ge=7, le=90)):
             all_dates.append(current.strftime("%Y-%m-%d"))
         current += timedelta(days=1)
 
-    reported_dates_set = set(r["date"] for r in daily)
-    compliance_rate = round(len(actual_dates) / len(all_dates) * 100, 1) if all_dates else 100
+    reported_dates = {r["date"] for r in daily}
+    compliance_rate = round(len(reported_dates) / len(all_dates) * 100, 1) if all_dates else 100
 
     trend = []
     for d in all_dates:
         cnt = next((r["cnt"] for r in daily if r["date"] == d), 0)
-        trend.append({"date": d, "reported": d in actual_dates, "count": cnt})
+        trend.append({"date": d, "reported": d in reported_dates, "count": cnt})
 
     return {
         "days": days,

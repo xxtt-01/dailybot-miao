@@ -51,7 +51,7 @@ async function loadSummary() {
   try {
     const { start, end } = getDateRange(summaryTab.value)
     summaryData.value = await api.getReportSummary(start, end)
-  } catch { /* 静默 */ }
+  } catch (e) { console.warn('[Stats] 获取报告摘要失败', e) }
   summaryLoading.value = false
 }
 
@@ -74,21 +74,21 @@ async function loadPlatformStats() {
     const res = await api.getPlatformStats()
     platformStats.value = res.platforms || []
     updatePieChart()
-  } catch { /* 静默 */ }
+  } catch (e) { console.warn('[Stats] 加载平台统计失败', e) }
 }
 
 async function loadPlatformTrend() {
   try {
     platformTrendData.value = await api.getPlatformTrend(trendDays.value)
     updatePlatformChart()
-  } catch { /* 静默 */ }
+  } catch (e) { console.warn('[Stats] 加载平台趋势失败', e) }
 }
 
 async function loadComplianceStats() {
   try {
     complianceData.value = await api.getCompliance(30)
     updateComplianceChart()
-  } catch { /* */ }
+  } catch (e) { console.warn('[Stats] 加载合规率失败', e) }
 }
 
 async function loadWorkTypes() {
@@ -96,7 +96,7 @@ async function loadWorkTypes() {
     workTypeData.value = await api.getWorkTypes(30)
     updateTypeChart()
     updateProjectChart()
-  } catch { /* */ }
+  } catch (e) { console.warn('[Stats] 加载工作类型失败', e) }
 }
 
 function initTrendChart() {
@@ -173,13 +173,17 @@ function updatePieChart() {
   })
 }
 
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
 function onResize() {
-  trendChart?.resize()
-  pieChart?.resize()
-  platformChart?.resize()
-  complianceChart?.resize()
-  typeChart?.resize()
-  projectChart?.resize()
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    trendChart?.resize()
+    pieChart?.resize()
+    platformChart?.resize()
+    complianceChart?.resize()
+    typeChart?.resize()
+    projectChart?.resize()
+  }, 150)
 }
 
 function switchDays(d: number) {
@@ -424,6 +428,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (resizeTimer) clearTimeout(resizeTimer)
   window.removeEventListener('resize', onResize)
   trendChart?.dispose()
   pieChart?.dispose()

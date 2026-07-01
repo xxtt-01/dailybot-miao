@@ -146,13 +146,21 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+function onVisibilityChange() {
+  if (!document.hidden && viewMode.value === 'history') {
+    loadReports()
+  }
+}
+
 onMounted(() => {
   loadReports()
   window.addEventListener('keydown', onKeydown)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 function extractFirstType(summary: string): string {

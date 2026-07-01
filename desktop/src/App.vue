@@ -49,7 +49,7 @@ async function checkUnread() {
   try {
     const res = await api.getNotifications(1, true)
     unreadCount.value = res.unread_count
-  } catch { /* 静默 */ }
+  } catch (e) { console.warn('[App] 检查未读通知失败', e) }
 }
 
 // 键盘快捷键

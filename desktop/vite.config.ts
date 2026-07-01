@@ -45,5 +45,15 @@ export default defineConfig(({ command }) => {
       }),
     ],
     clearScreen: false,
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/echarts')) return 'echarts'
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
+    },
   }
 })
