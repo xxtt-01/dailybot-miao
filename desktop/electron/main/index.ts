@@ -197,6 +197,7 @@ async function createWindow() {
     minHeight: 600,
     show: false,
     frame: false,
+    backgroundColor: '#303438',
     webPreferences: {
       preload,
       contextIsolation: true,

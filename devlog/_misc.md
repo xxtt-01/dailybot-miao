@@ -46,3 +46,18 @@
 - **原因:** `token.json` 包含飞书 OAuth 敏感令牌，`camouflage_history.json` 是运行时数据文件，`nul` 是 Windows 重定向残留
 - **决策:** 将 `token.json`、`camouflage_history.json`、`nul` 加入 .gitignore
 - **影响范围:** `.gitignore`
+
+## 2026-07-01: CI 手动触发 + 异常处理和 JSON 工具函数
+- **文件:**
+  - `.github/workflows/release.yml`
+  - `exceptions/handler.py`
+  - `utils/path_helper.py`
+- **原因:** 
+  - release.yml 缺少 `workflow_dispatch` 无法手动触发
+  - exception handler 误拦截 HTTPException 导致 API 异常返回 500 而非正确状态码
+  - 缺少 JSON 文件读写工具函数
+- **决策:**
+  - release.yml 增加 `workflow_dispatch:` 支持 GitHub Actions 手动触发
+  - handler.py: `HTTPException` 直接 `raise` 透传，不进入全局异常处理
+  - path_helper.py: 新增 `read_json()` 和 `write_json()` 工具函数（带目录自动创建）
+- **影响范围:** `.github/workflows/release.yml`、`exceptions/handler.py`、`utils/path_helper.py`

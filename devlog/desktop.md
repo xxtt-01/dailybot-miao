@@ -138,7 +138,7 @@
   - `desktop/src/api/client.ts`
 - **原因:** 窗口四角不圆、多个页面数据显示异常
 - **决策:**
-  - Electron: 移除 `transparent: true` 和 `backgroundMaterial: 'acrylic'`，让 Windows 11 原生圆角生效
+  - Electron: 移除 `transparent: true` 和 `backgroundMaterial: 'acrylic'`，让 Windows 11 原生圆角生效；增加 `backgroundColor: '#303438'` 防止启动闪白
   - Reports: 修复重复的"类型"列标题（改为"工作类型"+"模式"）
   - Scheduler: 修复 `config?.time` → `config?.default_time`，执行时间不再显示 "--"
   - Sources: `auto_discover` 模式显示"自动发现已启用"而非"暂无仓库"
