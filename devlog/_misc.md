@@ -61,3 +61,10 @@
   - handler.py: `HTTPException` 直接 `raise` 透传，不进入全局异常处理
   - path_helper.py: 新增 `read_json()` 和 `write_json()` 工具函数（带目录自动创建）
 - **影响范围:** `.github/workflows/release.yml`、`exceptions/handler.py`、`utils/path_helper.py`
+
+## 2026-07-01: BFG 清理 Git 历史中泄漏的 API Key
+- **文件:**
+  - Git history（全部 192 commits 重写）
+- **原因:** 审查报告发现之前硬编码的 OpenAI API Key 在旧 commit 历史中仍可见
+- **决策:** 使用 BFG Repo-Cleaner（--replace-text）从全部 192 个 commit 中移除该 Key，清理后 0/192 commits 含 Key
+- **影响范围:** Git 历史重写，所有 commit hash 变更，已 force push 到 GitHub
