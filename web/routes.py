@@ -107,8 +107,34 @@ async def get_status():
 @router.get("/config")
 async def get_config(masked: bool = Query(True, description="是否脱敏")):
     raw = getattr(config, '_yaml_config', None) or {}
+
+    # 将 env 覆盖值合并到原始 YAML 中（如 api_key 从 .env 加载）
+    def merge_env_overrides(d, prefix=""):
+        if not isinstance(d, dict):
+            return d
+        result = {}
+        for k, v in d.items():
+            path = f"{prefix}.{k}" if prefix else k
+            if isinstance(v, dict):
+                result[k] = merge_env_overrides(v, path)
+            elif isinstance(v, (list, str, int, float, bool)) or v is None:
+                # 空字符串尝试从 env 获取有效值
+                if v == "" or v is None:
+                    env_val = config.get(path)
+                    if env_val != v and env_val is not None:
+                        result[k] = env_val
+                    else:
+                        result[k] = v
+                else:
+                    result[k] = v
+            else:
+                result[k] = v
+        return result
+
+    merged = merge_env_overrides(dict(raw))
+
     if not masked:
-        return raw
+        return merged
 
     def mask_sensitive(d):
         if not isinstance(d, dict):
@@ -126,7 +152,7 @@ async def get_config(masked: bool = Query(True, description="是否脱敏")):
                 result[k] = v
         return result
 
-    return mask_sensitive(dict(raw))
+    return mask_sensitive(merged)
 
 
 @router.get("/reports")

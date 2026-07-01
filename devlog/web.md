@@ -83,3 +83,10 @@
 - **原因:** Sources 页面无法区分"暂无仓库"和"自动发现已启用"
 - **决策:** `/admin/sources` 响应增加 `auto_discover` 和 `target_user` 字段
 - **影响范围:** `web/routes.py`
+
+## 2026-07-01: /admin/config 返回 env 合并值而非原始 YAML
+- **文件:**
+  - `web/routes.py`
+- **原因:** config.yaml 中 `api_key` 置空后 Dashboard 误报"未配置 AI 供应商"
+- **决策:** 新增 `merge_env_overrides()` 遍历 YAML 树，空值从 `config.get()` 获取 env 覆盖值
+- **影响范围:** `web/routes.py`
