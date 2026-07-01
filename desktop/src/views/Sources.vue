@@ -96,8 +96,13 @@ onMounted(loadData)
             <button class="btn btn-danger btn-sm" @click="deleteSource(src.platform, idx)">删除</button>
           </div>
         </div>
+        <div v-else-if="src.auto_discover" class="auto-discover-info text-sm">
+          <span class="tag tag-info">自动发现</span>
+          <span class="text-dim">目标用户: {{ src.target_user || '--' }}</span>
+        </div>
         <div v-else class="text-dim text-sm" style="padding: var(--space-1) 0;">暂无仓库</div>
-        <div class="source-count text-dim text-sm">共 {{ src.repo_count }} 个仓库</div>
+        <div class="source-count text-dim text-sm" v-if="!src.auto_discover">共 {{ src.repo_count }} 个仓库</div>
+        <div class="source-count text-dim text-sm" v-else>自动发现已启用，无需手动添加仓库</div>
       </div>
 
       <!-- 添加表单 -->
@@ -146,6 +151,7 @@ onMounted(loadData)
 .repo-path { font-size: 12px; }
 .repo-branch { font-size: 10px; padding: 1px 6px; }
 .btn-sm { padding: 3px 10px; font-size: 11px; }
+.auto-discover-info { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; }
 .add-form { display: flex; flex-direction: column; gap: var(--space-1); }
 .form-row { display: flex; align-items: center; gap: var(--space-2); }
 .form-label { min-width: 64px; flex-shrink: 0; }

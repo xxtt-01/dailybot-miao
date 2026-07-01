@@ -134,10 +134,7 @@ onMounted(loadData)
         </div>
         <div class="glass-card status-card">
           <div class="card-label text-dim">执行时间</div>
-          <div class="card-value">{{ config?.time || '--' }}</div>
-          <div class="card-sub text-sm text-dim" v-if="config?.weekdays">
-            {{ '每周: ' + (Array.isArray(config.weekdays) ? config.weekdays.join(', ') : config.weekdays) }}
-          </div>
+          <div class="card-value">{{ config?.default_time || '--' }}</div>
         </div>
       </div>
 

@@ -396,6 +396,13 @@ async function generateReport(mode: 'weekly' | 'monthly') {
 }
 
 onMounted(async () => {
+  // 先加载所有数据
+  await Promise.all([loadTrend(), loadPlatformStats(), loadPlatformTrend(), loadComplianceStats(), loadWorkTypes()])
+
+  // 渲染图表容器
+  loading.value = false
+
+  // 等待 DOM 渲染完成再初始化图表
   await nextTick()
   initTrendChart()
   initPieChart()
@@ -403,9 +410,16 @@ onMounted(async () => {
   initComplianceChart()
   initTypeChart()
   initProjectChart()
-  await Promise.all([loadTrend(), loadPlatformStats(), loadPlatformTrend(), loadComplianceStats(), loadWorkTypes()])
+
+  // 重新更新图表（加载时图表未初始化，update 被跳过）
+  updateTrendChart()
+  updatePieChart()
+  updatePlatformChart()
+  updateComplianceChart()
+  updateTypeChart()
+  updateProjectChart()
+
   hasAnyData.value = !!(trendData.value || platformStats.value.length > 0 || platformTrendData.value || complianceData.value || workTypeData.value)
-  loading.value = false
   window.addEventListener('resize', onResize)
 })
 

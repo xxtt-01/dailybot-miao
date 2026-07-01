@@ -128,6 +128,23 @@
   - 系统通知：Dashboard 触发日报后通过 SSE 监听执行进度，完成时发原生通知 + Toast
 - **影响范围:** 后端 2 文件 + 前端 6 文件
 
+## 2026-07-01: 修复窗口圆角和数据显示问题
+- **文件:**
+  - `desktop/electron/main/index.ts`
+  - `desktop/src/views/Reports.vue`
+  - `desktop/src/views/Scheduler.vue`
+  - `desktop/src/views/Sources.vue`
+  - `desktop/src/views/Stats.vue`
+  - `desktop/src/api/client.ts`
+- **原因:** 窗口四角不圆、多个页面数据显示异常
+- **决策:**
+  - Electron: 移除 `transparent: true` 和 `backgroundMaterial: 'acrylic'`，让 Windows 11 原生圆角生效
+  - Reports: 修复重复的"类型"列标题（改为"工作类型"+"模式"）
+  - Scheduler: 修复 `config?.time` → `config?.default_time`，执行时间不再显示 "--"
+  - Sources: `auto_discover` 模式显示"自动发现已启用"而非"暂无仓库"
+  - Stats: 修复图表初始化时机—先加载数据再渲染 DOM 后 init，避免图表空白
+- **影响范围:** 前端 6 文件
+
 ## 2026-06-27: 审查修复 — SSE 鉴权/窗口事件/内存泄漏/冗余导入
 - **文件:**
   - `desktop/src/views/Dashboard.vue`

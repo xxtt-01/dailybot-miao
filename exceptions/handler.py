@@ -2,7 +2,7 @@ import asyncio
 import traceback
 import functools
 from loguru import logger
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from .base import BusinessException
 from .result import Result
@@ -28,6 +28,8 @@ class GlobalExceptionHandler:
         @app.exception_handler(Exception)
         async def global_exception_handler(request: Request, exc: Exception):
             """捕获 Web 全局未处理异常"""
+            if isinstance(exc, HTTPException):
+                raise exc
             logger.error(f"Web 系统异常: {str(exc)}\n{traceback.format_exc()}")
             return JSONResponse(
                 status_code=500,

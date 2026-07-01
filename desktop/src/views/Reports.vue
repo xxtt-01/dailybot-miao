@@ -214,8 +214,8 @@ function extractFirstType(summary: string): string {
             <th>时间</th>
             <th>平台</th>
             <th>摘要</th>
-            <th>类型</th>
-            <th>类型</th>
+            <th>工作类型</th>
+            <th>模式</th>
             <th>状态</th>
             <th>操作</th>
           </tr>
